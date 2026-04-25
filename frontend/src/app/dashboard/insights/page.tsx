@@ -41,14 +41,14 @@ export default function InsightsPage() {
         <div className="flex items-center gap-2">
           <Sparkles className="w-6 h-6 text-purple-600" />
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">AI Insights</h1>
-            <p className="text-sm text-gray-500">Gemini-powered analysis and recommendations</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">AI Insights</h1>
+            <p className="text-sm text-gray-500 dark:text-white/65">Gemini-powered analysis and recommendations</p>
           </div>
         </div>
 
         {/* Area Analysis */}
         <div className="card p-5 space-y-4">
-          <h2 className="font-semibold text-gray-900">Area Analysis</h2>
+          <h2 className="font-semibold text-gray-900 dark:text-white">Area Analysis</h2>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
               <label className="label">Area Name</label>
@@ -117,14 +117,14 @@ export default function InsightsPage() {
                 )}
               </div>
 
-              {insight.full_insight && (
+              {typeof insight.full_insight === 'string' && insight.full_insight.trim().length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2"><BookOpen className="w-4 h-4 text-gray-500" /><p className="text-sm font-semibold">Detailed Analysis</p></div>
-                  <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{insight.full_insight as string}</p>
+                  <p className="text-sm text-gray-700 dark:text-white/80 whitespace-pre-line leading-relaxed">{insight.full_insight}</p>
                 </div>
               )}
 
-              {insight.resource_needs && (
+              {Boolean(insight.resource_needs) && typeof insight.resource_needs === 'object' && (
                 <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
                   <p className="text-sm font-semibold text-amber-800 mb-2">Resource Requirements</p>
                   <div className="grid grid-cols-3 gap-3 text-center">
@@ -140,7 +140,7 @@ export default function InsightsPage() {
         {/* Weekly Summary */}
         <div className="card p-5 space-y-4">
           <div className="flex items-center justify-between">
-            <h2 className="font-semibold text-gray-900">Weekly AI Summary</h2>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Weekly AI Summary</h2>
             <button className="btn-secondary text-xs" onClick={() => summaryMut.mutate()} disabled={summaryMut.isPending}>
               {summaryMut.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
               Generate
@@ -149,19 +149,19 @@ export default function InsightsPage() {
 
           {summary ? (
             <div className="space-y-3 animate-fade-in">
-              <p className="text-sm text-gray-700">{summary.executive_summary as string}</p>
+              <p className="text-sm text-gray-700 dark:text-white/80">{summary.executive_summary as string}</p>
               {(summary.highlights as string[])?.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-500 uppercase mb-1.5">Highlights</p>
-                  <ul className="space-y-1">{(summary.highlights as string[]).map((h, i) => <li key={i} className="text-sm text-gray-600 flex items-start gap-1.5"><span className="text-brand-500">✓</span>{h}</li>)}</ul>
+                  <p className="text-xs font-semibold text-gray-500 dark:text-white/60 uppercase mb-1.5">Highlights</p>
+                  <ul className="space-y-1">{(summary.highlights as string[]).map((h, i) => <li key={i} className="text-sm text-gray-600 dark:text-white/75 flex items-start gap-1.5"><span className="text-brand-500">✓</span>{h}</li>)}</ul>
                 </div>
               )}
-              {summary.impact_statement && (
-                <p className="text-sm text-brand-700 bg-brand-50 rounded-xl px-4 py-3 italic">"{summary.impact_statement as string}"</p>
+              {typeof summary.impact_statement === 'string' && summary.impact_statement.trim().length > 0 && (
+                <p className="text-sm text-brand-700 bg-brand-50 rounded-xl px-4 py-3 italic">"{summary.impact_statement}"</p>
               )}
             </div>
           ) : (
-            <p className="text-sm text-gray-400">Click Generate to produce a Gemini-powered weekly summary.</p>
+            <p className="text-sm text-gray-500 dark:text-white/60">Click Generate to produce a Gemini-powered weekly summary.</p>
           )}
         </div>
       </div>

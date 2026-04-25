@@ -35,7 +35,7 @@ const signup = async (req, res) => {
       // Create user
       const userRes = await client.query(
         `INSERT INTO users (email, password_hash, full_name, role, phone)
-         VALUES ($1, $2, $3, $4, $5) RETURNING id, email, full_name, role`,
+         VALUES ($1, $2, $3, $4, $5) RETURNING id, email, full_name, role, phone`,
         [email.toLowerCase(), password_hash, full_name, role, phone || null]
       );
       const user = userRes.rows[0];
@@ -66,7 +66,7 @@ const signup = async (req, res) => {
       success: true,
       message: 'Account created successfully',
       data: {
-        user: { id: result.id, email: result.email, full_name: result.full_name, role: result.role },
+        user: { id: result.id, email: result.email, full_name: result.full_name, role: result.role, phone: result.phone },
         accessToken,
         refreshToken,
       },
@@ -83,7 +83,7 @@ const login = async (req, res) => {
 
   try {
     const result = await query(
-      'SELECT id, email, password_hash, full_name, role, is_active FROM users WHERE email = $1',
+      'SELECT id, email, password_hash, full_name, role, phone, is_active FROM users WHERE email = $1',
       [email.toLowerCase()]
     );
 
@@ -115,7 +115,7 @@ const login = async (req, res) => {
     return res.json({
       success: true,
       data: {
-        user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role },
+        user: { id: user.id, email: user.email, full_name: user.full_name, role: user.role, phone: user.phone },
         accessToken,
         refreshToken,
       },
@@ -192,7 +192,7 @@ const me = async (req, res) => {
     if (req.user.role === 'volunteer') {
       const vpRes = await query(
         `SELECT skills, languages, availability, address, city, radius_km, rating, total_tasks_done,
-                ST_X(location::geometry) AS lng, ST_Y(location::geometry) AS lat
+                lat, lng, grace_points, experience_years
          FROM volunteer_profiles WHERE user_id = $1`,
         [req.user.id]
       );

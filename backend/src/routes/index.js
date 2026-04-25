@@ -12,6 +12,8 @@ const volunteerController = require('../controllers/volunteerController');
 const dashboardController = require('../controllers/dashboardController');
 const ngoController = require('../controllers/ngoController');
 const matchController = require('../controllers/matchController');
+const sosController = require('../controllers/sosController');
+const notificationController = require('../controllers/notificationController');
 
 const router = express.Router();
 
@@ -58,6 +60,7 @@ router.post('/reports',
 );
 
 router.get('/reports', authenticate, reportController.getReports);
+router.get('/reports/central/insights', authenticate, requireRole('admin'), reportController.getCentralInsights);
 
 router.post('/reports/:id/convert',
   authenticate,
@@ -76,7 +79,7 @@ router.post(
   requireRole('admin'),
   [
     body('title').trim().isLength({ min: 5, max: 500 }),
-    body('description').trim().isLength({ min: 10 }),
+    body('description').trim().isLength({ min: 3 }),
     body('category').isIn(['food', 'health', 'shelter', 'education', 'water', 'sanitation', 'mental_health', 'disaster_relief', 'other']),
     body('urgency').isIn(['low', 'medium', 'high', 'critical']),
     body('latitude').isFloat({ min: -90, max: 90 }),
@@ -90,6 +93,8 @@ router.post(
 router.get('/tasks', authenticate, taskController.getTasks);
 router.get('/tasks/:id', authenticate, [param('id').isUUID()], validate, taskController.getTaskById);
 router.get('/tasks/:id/matches', authenticate, requireRole('admin'), [param('id').isUUID()], validate, taskController.getTaskMatches);
+router.post('/tasks/:id/join-request', authenticate, requireRole('volunteer'), [param('id').isUUID()], validate, taskController.requestJoinTask);
+router.put('/tasks/:id/leader', authenticate, requireRole('admin'), [param('id').isUUID(), body('volunteer_id').isUUID()], validate, taskController.setTaskLeader);
 
 router.put('/tasks/:id/status',
   authenticate,
@@ -147,5 +152,55 @@ router.get('/match/nearby', authenticate, matchController.getNearby);
 // ─── DASHBOARD ─────────────────────────────────────────────────────────────────
 router.get('/dashboard/stats', authenticate, requireRole('admin'), dashboardController.getStats);
 router.get('/dashboard/weekly-summary', authenticate, requireRole('admin'), dashboardController.getWeeklySummary);
+router.get('/dashboard/volunteer-stats', authenticate, requireRole('volunteer'), dashboardController.getVolunteerStats);
+
+// ─── SOS ────────────────────────────────────────────────────────────────────────
+router.post(
+  '/sos',
+  [
+    body('lat').isFloat({ min: -90, max: 90 }),
+    body('lng').isFloat({ min: -180, max: 180 }),
+    body('user_id').isString().trim().isLength({ min: 1 }),
+    body('radius_km').optional().isFloat({ min: 1, max: 250 }),
+  ],
+  validate,
+  sosController.postSos
+);
+
+router.post(
+  '/sos/sms',
+  [
+    body('lat').isFloat({ min: -90, max: 90 }),
+    body('lng').isFloat({ min: -180, max: 180 }),
+    body('user_id').isString().trim().isLength({ min: 1 }),
+    body('phones').optional().isArray(),
+  ],
+  validate,
+  sosController.postSosSms
+);
+router.post(
+  '/sos/ack',
+  [
+    body('sos_id').isString().trim().isLength({ min: 1 }),
+    body('user_id').isString().trim().isLength({ min: 1 }),
+    body('responder_id').isString().trim().isLength({ min: 1 }),
+    body('responder_name').optional().isString(),
+    body('message').optional().isString(),
+  ],
+  validate,
+  sosController.postSosAck
+);
+
+// ─── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+router.get('/notifications', authenticate, notificationController.listNotifications);
+router.put('/notifications/:id/read', authenticate, [param('id').isUUID()], validate, notificationController.markRead);
+router.put(
+  '/notifications/:id/respond',
+  authenticate,
+  requireRole('admin'),
+  [param('id').isUUID(), body('action').isIn(['accept', 'reject']), body('message').optional().isString()],
+  validate,
+  notificationController.respondJoinRequest
+);
 
 module.exports = router;

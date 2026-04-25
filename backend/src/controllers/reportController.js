@@ -215,4 +215,67 @@ const convertToTask = async (req, res) => {
   }
 };
 
-module.exports = { createReport, getReports, convertToTask };
+// GET /api/reports/central/insights — Admin AI forecasting
+const getCentralInsights = async (req, res) => {
+  try {
+    const [summaryRes, cityRes, categoryRes, openTasksRes] = await Promise.all([
+      query(
+        `SELECT
+            COUNT(*) AS total_reports,
+            COUNT(*) FILTER (WHERE is_converted = FALSE) AS pending_reports,
+            COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days') AS reports_last_30d
+         FROM reports`
+      ),
+      query(
+        `SELECT COALESCE(city, 'Unknown') AS city, COUNT(*) AS count
+         FROM reports
+         GROUP BY city
+         ORDER BY count DESC
+         LIMIT 8`
+      ),
+      query(
+        `SELECT category, urgency, COUNT(*) AS count
+         FROM reports
+         GROUP BY category, urgency
+         ORDER BY count DESC
+         LIMIT 20`
+      ),
+      query(
+        `SELECT title, category, urgency, city, created_at
+         FROM tasks
+         WHERE status NOT IN ('completed', 'cancelled')
+         ORDER BY created_at DESC
+         LIMIT 25`
+      ),
+    ]);
+
+    const summary = summaryRes.rows[0];
+    const aiPayload = {
+      total_reports: Number(summary.total_reports || 0),
+      pending_reports: Number(summary.pending_reports || 0),
+      reports_last_30d: Number(summary.reports_last_30d || 0),
+      top_cities: cityRes.rows,
+      category_urgency_distribution: categoryRes.rows,
+      open_tasks: openTasksRes.rows,
+    };
+
+    let aiInsights = null;
+    if (process.env.GEMINI_API_KEY) {
+      aiInsights = await geminiService.generateAreaInsights('Central NGO Network', openTasksRes.rows);
+    }
+
+    return res.json({
+      success: true,
+      data: {
+        summary: aiPayload,
+        ai_insights: aiInsights,
+        generated_at: new Date().toISOString(),
+      },
+    });
+  } catch (err) {
+    logger.error('Central report insights error', { error: err.message });
+    return res.status(500).json({ success: false, message: 'Failed to generate central insights' });
+  }
+};
+
+module.exports = { createReport, getReports, convertToTask, getCentralInsights };

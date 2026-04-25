@@ -6,6 +6,7 @@ const api = axios.create({
   timeout: 30000,
   headers: { 'Content-Type': 'application/json' },
 });
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 // ─── Attach token ─────────────────────────────────
 api.interceptors.request.use((config) => {
@@ -52,7 +53,7 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token');
 
         const { data } = await axios.post(
-          `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+          `${API_BASE_URL}/auth/refresh`,
           { refreshToken }
         );
 
@@ -96,6 +97,7 @@ export const reportsApi = {
   create: (data: any) => api.post('/reports', data),
   list: (params?: any) => api.get('/reports', { params }),
   convert: (id: string, data: any) => api.post(`/reports/${id}/convert`, data),
+  centralInsights: () => api.get('/reports/central/insights'),
 };
 
 // ─── TASKS ────────────────────────────────────────
@@ -112,6 +114,8 @@ export const tasksApi = {
     api.post(`/tasks/${id}/auto-assign`),
   getInsights: (params?: any) =>
     api.get('/tasks/insights', { params }),
+  requestJoin: (id: string, message?: string) => api.post(`/tasks/${id}/join-request`, { message }),
+  setLeader: (id: string, volunteer_id: string) => api.put(`/tasks/${id}/leader`, { volunteer_id }),
 };
 
 // ─── ASSIGNMENTS ─────────────────────────────────
@@ -140,10 +144,27 @@ export const matchApi = {
   nearby: (params: any) => api.get('/match/nearby', { params }),
 };
 
+// ─── SOS ──────────────────────────────────────────
+export const sosApi = {
+  trigger: (data: { lat: number; lng: number; user_id: string; emergency_details?: string }) => api.post('/sos', data),
+  sendOfflineSms: (data: { lat: number; lng: number; user_id: string; phones?: string[] }) =>
+    api.post('/sos/sms', data),
+  acknowledge: (data: { sos_id: string; user_id: string; responder_id: string; responder_name?: string; message?: string }) =>
+    api.post('/sos/ack', data),
+};
+
 // ─── DASHBOARD ───────────────────────────────────
 export const dashboardApi = {
   getStats: () => api.get('/dashboard/stats'),
   getWeeklySummary: () => api.get('/dashboard/weekly-summary'),
+  getVolunteerStats: () => api.get('/dashboard/volunteer-stats'),
+};
+
+export const notificationsApi = {
+  list: () => api.get('/notifications'),
+  markRead: (id: string) => api.put(`/notifications/${id}/read`),
+  respond: (id: string, action: 'accept' | 'reject', message?: string) =>
+    api.put(`/notifications/${id}/respond`, { action, message }),
 };
 
 export { api };

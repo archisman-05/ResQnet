@@ -22,6 +22,9 @@ interface Task {
   city?: string;
   ai_summary?: string;
   ai_priority_score: number;
+  assigned_volunteers?: { volunteer_id: string; volunteer_name: string }[];
+  leader_id?: string | null;
+  leader_name?: string | null;
 }
 
 interface VolunteerMatch {
@@ -70,6 +73,14 @@ export default function TasksPage() {
     mutationFn: ({ id, status }: { id: string; status: string }) => tasksApi.updateStatus(id, status),
     onSuccess: () => { toast.success('Status updated'); qc.invalidateQueries({ queryKey: ['tasks'] }); },
   });
+  const setLeaderMut = useMutation({
+    mutationFn: ({ taskId, volunteerId }: { taskId: string; volunteerId: string }) => tasksApi.setLeader(taskId, volunteerId),
+    onSuccess: () => {
+      toast.success('Leader selected');
+      qc.invalidateQueries({ queryKey: ['tasks'] });
+    },
+    onError: () => toast.error('Failed to set leader'),
+  });
 
   const loadMatches = async (task: Task) => {
     setMatchModal(task);
@@ -103,8 +114,8 @@ export default function TasksPage() {
     <DashboardLayout>
       <div className="p-6 space-y-4 max-w-7xl mx-auto">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <h1 className="text-2xl font-bold text-gray-900">Tasks</h1>
-          <p className="text-sm text-gray-500">{pagination?.total ?? '…'} total</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Tasks</h1>
+          <p className="text-sm text-gray-500 dark:text-white/65">{pagination?.total ?? '…'} total</p>
         </div>
 
         {/* Filters */}
@@ -133,7 +144,7 @@ export default function TasksPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-gray-100 bg-gray-50">
-                    {['Title', 'Category', 'Urgency', 'Status', 'Location', 'Priority', 'Actions'].map(h => (
+                    {['Title', 'Category', 'Urgency', 'Status', 'Location', 'Assignments', 'Priority', 'Actions'].map(h => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wide">
                         {h}
                       </th>
@@ -169,6 +180,35 @@ export default function TasksPage() {
                           <MapPin className="w-3 h-3" />
                           {task.city ?? task.address ?? '–'}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 min-w-[220px]">
+                        {(task.assigned_volunteers?.length || 0) > 0 ? (
+                          <div className="space-y-1">
+                            <p className="text-xs text-gray-600 dark:text-white/70">
+                              {task.assigned_volunteers?.map((v) => v.volunteer_name).join(', ')}
+                            </p>
+                            <select
+                              className="text-xs border border-gray-200 rounded-md px-2 py-1 focus:outline-none bg-transparent"
+                              value={task.leader_id || ''}
+                              onChange={(e) => {
+                                if (!e.target.value) return;
+                                setLeaderMut.mutate({ taskId: task.id, volunteerId: e.target.value });
+                              }}
+                            >
+                              <option value="">Choose leader</option>
+                              {task.assigned_volunteers?.map((v) => (
+                                <option key={v.volunteer_id} value={v.volunteer_id}>
+                                  {v.volunteer_name}
+                                </option>
+                              ))}
+                            </select>
+                            {task.leader_name && (
+                              <p className="text-[11px] text-brand-600 dark:text-brand-300">Leader: {task.leader_name}</p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-gray-400">No volunteers assigned yet</p>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
@@ -231,21 +271,21 @@ export default function TasksPage() {
       {/* AI Match Modal */}
       {matchModal && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto animate-slide-up">
-            <div className="flex items-center justify-between p-5 border-b">
+          <div className="bg-white dark:bg-ink-950 border border-gray-200 dark:border-white/10 rounded-2xl shadow-2xl w-full max-w-lg max-h-[80vh] overflow-y-auto animate-slide-up">
+            <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-white/10">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-purple-600" />
-                <h2 className="font-bold text-gray-900">AI Volunteer Matching</h2>
+                <h2 className="font-bold text-gray-900 dark:text-white">AI Volunteer Matching</h2>
               </div>
-              <button onClick={() => setMatchModal(null)} className="p-1 hover:bg-gray-100 rounded-lg">
+              <button onClick={() => setMatchModal(null)} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <div className="p-5 space-y-4">
               <div>
-                <p className="text-xs text-gray-500">Task</p>
-                <p className="font-semibold">{matchModal.title}</p>
+                <p className="text-xs text-gray-500 dark:text-white/60">Task</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{matchModal.title}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <span className={`badge-${matchModal.urgency}`}>{matchModal.urgency}</span>
                   <span className="badge bg-gray-100 text-gray-600">{matchModal.category}</span>
@@ -255,24 +295,24 @@ export default function TasksPage() {
               {matchLoading ? (
                 <div className="py-8 text-center">
                   <Loader2 className="w-6 h-6 animate-spin text-purple-500 mx-auto" />
-                  <p className="text-sm text-gray-500 mt-2">AI is analysing volunteers…</p>
+                  <p className="text-sm text-gray-500 dark:text-white/65 mt-2">AI is analysing volunteers…</p>
                 </div>
               ) : matchData ? (
                 <>
                   {matchData.aiMatching?.matching_insight && (
-                    <div className="bg-purple-50 border border-purple-100 rounded-xl p-3">
-                      <p className="text-xs font-medium text-purple-700 mb-1">AI Insight</p>
-                      <p className="text-xs text-purple-800">{matchData.aiMatching.matching_insight}</p>
+                    <div className="bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-400/20 rounded-xl p-3">
+                      <p className="text-xs font-medium text-purple-700 dark:text-purple-200 mb-1">AI Insight</p>
+                      <p className="text-xs text-purple-800 dark:text-purple-100">{matchData.aiMatching.matching_insight}</p>
                     </div>
                   )}
 
                   <div className="space-y-2">
-                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Top Matches</p>
+                    <p className="text-xs font-semibold text-gray-500 dark:text-white/60 uppercase tracking-wide">Top Matches</p>
                     {matchData.volunteers.map((vol, i) => (
                       <div
                         key={vol.user_id}
                         className={`flex items-start gap-3 p-3 rounded-xl border transition-colors ${
-                          i === 0 ? 'border-purple-200 bg-purple-50' : 'border-gray-100 hover:bg-gray-50'
+                          i === 0 ? 'border-purple-200 bg-purple-50 dark:bg-purple-500/10 dark:border-purple-400/20' : 'border-gray-100 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/5'
                         }`}
                       >
                         <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 font-bold flex items-center justify-center flex-shrink-0">
@@ -280,12 +320,12 @@ export default function TasksPage() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
-                            <p className="font-semibold text-sm">{vol.full_name}</p>
+                            <p className="font-semibold text-sm text-gray-900 dark:text-white">{vol.full_name}</p>
                             {i === 0 && (
                               <span className="badge bg-purple-100 text-purple-700">Best Match</span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 text-xs text-gray-500 mt-0.5">
+                          <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-white/60 mt-0.5">
                             <span className="flex items-center gap-0.5">
                               <MapPin className="w-3 h-3" />
                               {vol.distance_km?.toFixed(1)}km
@@ -293,7 +333,7 @@ export default function TasksPage() {
                             <span>★ {vol.rating}</span>
                           </div>
                           {vol.ai_reasoning && (
-                            <p className="text-xs text-gray-500 mt-1 line-clamp-2">{vol.ai_reasoning}</p>
+                            <p className="text-xs text-gray-500 dark:text-white/65 mt-1 line-clamp-2">{vol.ai_reasoning}</p>
                           )}
                           <div className="mt-1.5 flex items-center gap-1">
                             <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
@@ -318,7 +358,7 @@ export default function TasksPage() {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-gray-400">No matches found.</p>
+                <p className="text-sm text-gray-500 dark:text-white/60">No matches found.</p>
               )}
             </div>
           </div>

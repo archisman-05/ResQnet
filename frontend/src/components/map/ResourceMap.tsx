@@ -5,6 +5,10 @@ import { GoogleMap, InfoWindow, Marker, useLoadScript } from '@react-google-maps
 
 import { ngosApi, tasksApi, volunteersApi } from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
+import { useSosStore } from '@/features/sos/store/sosStore';
+import { useThemeStore } from '@/store/themeStore';
+import { useAuthStore } from '@/store/authStore';
+import toast from 'react-hot-toast';
 
 type LatLng = { lat: number; lng: number };
 
@@ -46,6 +50,14 @@ export default function ResourceMap({
   height = '100%',
 }: MapProps) {
   const { on } = useSocket();
+  const user = useAuthStore((s) => s.user);
+  const sosAlert = useSosStore((s) => s.activeAlert);
+  const resolvedTheme = useThemeStore((s) => s.resolved);
+
+  // React 19 + @react-google-maps/api typing mismatch workaround (runtime is fine)
+  const GoogleMapAny = GoogleMap as any;
+  const MarkerAny = Marker as any;
+  const InfoWindowAny = InfoWindow as any;
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [volunteers, setVolunteers] = useState<any[]>([]);
@@ -57,12 +69,32 @@ export default function ResourceMap({
     | null
   >(null);
   const [userPos, setUserPos] = useState<LatLng | null>(null);
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [didAutoFocus, setDidAutoFocus] = useState(false);
 
   const { isLoaded, loadError } = useLoadScript({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   });
 
   const mapCenter = useMemo<LatLng>(() => ({ lat: 20.5937, lng: 78.9629 }), []);
+  const isDark = resolvedTheme === 'dark';
+
+  const darkMapStyles = useMemo(
+    () => [
+      { elementType: 'geometry', stylers: [{ color: '#0b0d14' }] },
+      { elementType: 'labels.text.stroke', stylers: [{ color: '#0b0d14' }] },
+      { elementType: 'labels.text.fill', stylers: [{ color: '#8b95a7' }] },
+      { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a3146' }] },
+      { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#8b95a7' }] },
+      { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0f1220' }] },
+      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#12162a' }] },
+      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1c2442' }] },
+      { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
+      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#060812' }] },
+      { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
+    ],
+    []
+  );
 
   // ─── Load data ─────────────────────────
   const loadMapData = useCallback(async () => {
@@ -106,6 +138,13 @@ export default function ResourceMap({
     );
   }, []);
 
+  useEffect(() => {
+    if (!map || !userPos || didAutoFocus) return;
+    map.panTo(userPos);
+    map.setZoom(13);
+    setDidAutoFocus(true);
+  }, [map, userPos, didAutoFocus]);
+
   // ─── Real-time updates ─────────────────
   useEffect(() => {
     const cleanup = on('task:new', loadMapData);
@@ -138,7 +177,7 @@ export default function ResourceMap({
 
   if (!isLoaded) {
     return (
-      <div style={{ width: '100%', height }} className="rounded-xl overflow-hidden bg-white flex items-center justify-center text-sm text-gray-500 border border-gray-200">
+      <div style={{ width: '100%', height }} className="rounded-xl overflow-hidden bg-white dark:bg-white/5 flex items-center justify-center text-sm text-gray-500 dark:text-white/65 border border-gray-200 dark:border-white/10">
         Loading map…
       </div>
     );
@@ -149,7 +188,7 @@ export default function ResourceMap({
       style={{ width: '100%', height }}
       className="rounded-xl overflow-hidden"
     >
-      <GoogleMap
+      <GoogleMapAny
         center={mapCenter}
         zoom={5}
         mapContainerStyle={{ height: '100%', width: '100%' }}
@@ -158,14 +197,50 @@ export default function ResourceMap({
           mapTypeControl: false,
           fullscreenControl: false,
           clickableIcons: false,
+          styles: isDark ? (darkMapStyles as any) : undefined,
         }}
         onClick={() => setSelected(null)}
+        onLoad={(loadedMap: google.maps.Map) => setMap(loadedMap)}
       >
+        {/* SOS highlight */}
+        {sosAlert && (
+          <MarkerAny
+            position={{ lat: sosAlert.lat, lng: sosAlert.lng }}
+            icon={{
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: '#ef4444',
+              fillOpacity: 0.9,
+              strokeColor: '#ffffff',
+              strokeWeight: 3,
+              scale: 12,
+            }}
+            onClick={() => {
+              setSelected({ type: 'task', item: { title: 'SOS Alert', ...sosAlert } } as any);
+            }}
+          />
+        )}
+
+        {/* My location marker */}
+        {userPos && (
+          <MarkerAny
+            position={userPos}
+            icon={{
+              path: google.maps.SymbolPath.CIRCLE,
+              fillColor: '#10b981',
+              fillOpacity: 1,
+              strokeColor: '#ffffff',
+              strokeWeight: 2,
+              scale: 8,
+            }}
+            title="Your location"
+          />
+        )}
+
         {/* Needs/Tasks (red) */}
         {tasks.map((task: any) => {
           if (task.lat == null || task.lng == null) return null;
           return (
-            <Marker
+            <MarkerAny
               key={task.id}
               position={{ lat: task.lat, lng: task.lng }}
               icon={circleIcon('#ef4444')}
@@ -182,7 +257,7 @@ export default function ResourceMap({
           if (vol.lat == null || vol.lng == null) return null;
           const color = vol.availability === 'available' ? '#3b82f6' : '#94a3b8';
           return (
-            <Marker
+            <MarkerAny
               key={vol.id}
               position={{ lat: vol.lat, lng: vol.lng }}
               icon={circleIcon(color)}
@@ -195,7 +270,7 @@ export default function ResourceMap({
         {ngos.map((ngo: any) => {
           if (ngo.lat == null || ngo.lng == null) return null;
           return (
-            <Marker
+            <MarkerAny
               key={ngo.id}
               position={{ lat: ngo.lat, lng: ngo.lng }}
               icon={circleIcon('#22c55e')}
@@ -205,7 +280,7 @@ export default function ResourceMap({
         })}
 
         {selected?.type === 'task' && (
-          <InfoWindow
+          <InfoWindowAny
             position={{ lat: selected.item.lat, lng: selected.item.lng }}
             onCloseClick={() => setSelected(null)}
           >
@@ -224,12 +299,28 @@ export default function ResourceMap({
                   Skills: {selected.item.required_skills.join(', ')}
                 </div>
               )}
+              {user?.role === 'volunteer' && selected.item.id && (
+                <button
+                  style={{ marginTop: 8, fontSize: 11, padding: '6px 10px', borderRadius: 8, background: '#16a34a', color: '#fff', border: 'none' }}
+                  onClick={async () => {
+                    const msg = window.prompt('Optional message to admin (why you can help):') || '';
+                    try {
+                      await tasksApi.requestJoin(String(selected.item.id), msg);
+                      toast.success('Join request sent to admin.');
+                    } catch (e: any) {
+                      toast.error(e?.response?.data?.message || 'Failed to send request');
+                    }
+                  }}
+                >
+                  Request to join
+                </button>
+              )}
             </div>
-          </InfoWindow>
+          </InfoWindowAny>
         )}
 
         {selected?.type === 'volunteer' && (
-          <InfoWindow
+          <InfoWindowAny
             position={{ lat: selected.item.lat, lng: selected.item.lng }}
             onCloseClick={() => setSelected(null)}
           >
@@ -249,11 +340,11 @@ export default function ResourceMap({
                 </div>
               )}
             </div>
-          </InfoWindow>
+          </InfoWindowAny>
         )}
 
         {selected?.type === 'ngo' && (
-          <InfoWindow
+          <InfoWindowAny
             position={{ lat: selected.item.lat, lng: selected.item.lng }}
             onCloseClick={() => setSelected(null)}
           >
@@ -268,9 +359,9 @@ export default function ResourceMap({
                 </div>
               )}
             </div>
-          </InfoWindow>
+          </InfoWindowAny>
         )}
-      </GoogleMap>
+      </GoogleMapAny>
     </div>
   );
 }

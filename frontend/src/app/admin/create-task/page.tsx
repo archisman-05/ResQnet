@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -20,18 +20,43 @@ export default function CreateTaskPage() {
   const [requiredSkillsRaw, setRequiredSkillsRaw] = useState('');
   const [requiredVolunteers, setRequiredVolunteers] = useState(1);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isGeocoding, setIsGeocoding] = useState(false);
 
   const required_skills = useMemo(
     () => requiredSkillsRaw.split(',').map(s => s.trim()).filter(Boolean),
     [requiredSkillsRaw]
   );
 
+  useEffect(() => {
+    if (address.trim().length < 5) return;
+    const id = window.setTimeout(async () => {
+      setIsGeocoding(true);
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(address.trim())}`;
+        const res = await fetch(url, { headers: { Accept: 'application/json' } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const first = Array.isArray(data) ? data[0] : null;
+        if (!first?.lat || !first?.lon) return;
+        const lat = Number(first.lat);
+        const lng = Number(first.lon);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        setLocation({ lat, lng });
+      } finally {
+        setIsGeocoding(false);
+      }
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [address]);
+
   const mut = useMutation({
     mutationFn: () => {
-      if (!location) throw new Error('Pick a location on the map');
+      if (!location) throw new Error('Please provide an address or pick a location on the map');
+      if (title.trim().length < 5) throw new Error('Title must be at least 5 characters');
+      if (description.trim().length < 3) throw new Error('Description must be at least 3 characters');
       return tasksApi.create({
-        title,
-        description,
+        title: title.trim(),
+        description: description.trim(),
         category,
         urgency,
         address: address || undefined,
@@ -57,30 +82,30 @@ export default function CreateTaskPage() {
     <DashboardLayout>
       <div className="p-6 space-y-5 max-w-3xl mx-auto">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Create resource need</h1>
-          <p className="text-sm text-gray-500">Create a task and auto-assign nearby volunteers.</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Create resource need</h1>
+          <p className="text-sm text-gray-500 dark:text-white/65">Create a task and auto-assign nearby volunteers.</p>
         </div>
 
         <div className="card p-5 space-y-4">
           <div className="grid gap-3">
-            <label className="text-xs font-semibold text-gray-600">Title</label>
+            <label className="text-xs font-semibold text-gray-700 dark:text-white/80">Title</label>
             <input className="input" value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Emergency food distribution" />
           </div>
 
           <div className="grid gap-3">
-            <label className="text-xs font-semibold text-gray-600">Description</label>
+            <label className="text-xs font-semibold text-gray-700 dark:text-white/80">Description</label>
             <textarea className="input min-h-[120px]" value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the need, constraints, and timeline…" />
           </div>
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <label className="text-xs font-semibold text-gray-600">Category</label>
+              <label className="text-xs font-semibold text-gray-700 dark:text-white/80">Category</label>
               <select className="input" value={category} onChange={e => setCategory(e.target.value as any)}>
                 {CATEGORIES.map(c => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}
               </select>
             </div>
             <div className="grid gap-2">
-              <label className="text-xs font-semibold text-gray-600">Urgency</label>
+              <label className="text-xs font-semibold text-gray-700 dark:text-white/80">Urgency</label>
               <select className="input" value={urgency} onChange={e => setUrgency(e.target.value as any)}>
                 {URGENCIES.map(u => <option key={u} value={u}>{u}</option>)}
               </select>
@@ -89,11 +114,11 @@ export default function CreateTaskPage() {
 
           <div className="grid sm:grid-cols-2 gap-3">
             <div className="grid gap-2">
-              <label className="text-xs font-semibold text-gray-600">Required skills (comma-separated)</label>
+              <label className="text-xs font-semibold text-gray-700 dark:text-white/80">Required skills (comma-separated)</label>
               <input className="input" value={requiredSkillsRaw} onChange={e => setRequiredSkillsRaw(e.target.value)} placeholder="medical, driving, logistics" />
             </div>
             <div className="grid gap-2">
-              <label className="text-xs font-semibold text-gray-600">Volunteers needed</label>
+              <label className="text-xs font-semibold text-gray-700 dark:text-white/80">Volunteers needed</label>
               <input
                 className="input"
                 type="number"
@@ -106,15 +131,18 @@ export default function CreateTaskPage() {
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs font-semibold text-gray-600">Address / description (optional)</label>
+            <label className="text-xs font-semibold text-gray-700 dark:text-white/80">Address / description (optional)</label>
             <input className="input" value={address} onChange={e => setAddress(e.target.value)} placeholder="Street / landmark / area" />
+            {isGeocoding ? (
+              <p className="text-[11px] text-gray-500 dark:text-white/60">Detecting location from address...</p>
+            ) : null}
           </div>
 
           <div className="grid gap-2">
-            <label className="text-xs font-semibold text-gray-600">Location</label>
+            <label className="text-xs font-semibold text-gray-700 dark:text-white/80">Location</label>
             <MapPicker value={location} onChange={setLocation} />
-            <p className="text-xs text-gray-400">
-              Click on the map to set the location{location ? ` (${location.lat.toFixed(5)}, ${location.lng.toFixed(5)})` : ''}.
+            <p className="text-xs text-gray-500 dark:text-white/65">
+              Location auto-fills from the address. You can still click the map to adjust it{location ? ` (${location.lat.toFixed(5)}, ${location.lng.toFixed(5)})` : ''}.
             </p>
           </div>
 

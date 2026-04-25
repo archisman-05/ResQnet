@@ -41,7 +41,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-blue-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-blue-50 dark:from-ink-950 dark:via-ink-950 dark:to-slate-900 flex items-center justify-center p-4 text-gray-900 dark:text-white">
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
@@ -53,7 +53,7 @@ export default function LoginPage() {
         </div>
 
         {/* Demo accounts banner */}
-        <div className="card p-4 mb-4 bg-amber-50 border-amber-200">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 mb-4 shadow-sm dark:border-amber-300/25 dark:bg-amber-500/10">
           <div className="flex items-center gap-2 mb-3">
             <Zap className="w-4 h-4 text-amber-600" />
             <p className="text-sm font-semibold text-amber-800">Demo Mode — No backend needed</p>
@@ -64,7 +64,7 @@ export default function LoginPage() {
                 key={acc.email}
                 type="button"
                 onClick={() => fillDemo(acc.email, acc.password)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors text-left group"
+                className="w-full flex items-center justify-between px-3 py-2 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors text-left group dark:bg-white/10 dark:border-amber-300/20 dark:hover:bg-white/15"
               >
                 <div>
                   <p className="text-xs font-semibold text-gray-800 group-hover:text-brand-700">
@@ -81,8 +81,8 @@ export default function LoginPage() {
         </div>
 
         {/* Login form */}
-        <div className="card p-6 shadow-md">
-          <h2 className="text-lg font-bold text-gray-900 mb-5">Sign in</h2>
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-white/5">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5">Sign in</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -110,7 +110,7 @@ export default function LoginPage() {
                 />
                 <button
                   type="button"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700 dark:text-white/60 dark:hover:text-white"
                   onClick={() => setShowPass(s => !s)}
                 >
                   {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -123,7 +123,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <p className="text-sm text-center text-gray-500 mt-4">
+          <p className="text-sm text-center text-gray-500 dark:text-white/65 mt-4">
             Don&apos;t have an account?{' '}
             <Link href="/signup" className="text-brand-600 hover:underline font-medium">
               Sign up

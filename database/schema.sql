@@ -4,7 +4,7 @@
 -- ============================================================
 
 -- Enable required extensions
---CREATE EXTENSION IF NOT EXISTS postgis;
+CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE EXTENSION IF NOT EXISTS pg_trgm; -- for fuzzy text search
 
@@ -257,12 +257,12 @@ CREATE TRIGGER trg_tasks_updated BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUN
 CREATE TRIGGER trg_assignments_updated BEFORE UPDATE ON assignments FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
 -- Function: find volunteers near a task within radius
---CREATE OR REPLACE FUNCTION find_nearby_volunteers(
-   -- task_lat FLOAT,
-    --task_lng FLOAT,
-    --radius_km FLOAT DEFAULT 25,
-    --required_skills TEXT[] DEFAULT '{}'
---)
+CREATE OR REPLACE FUNCTION find_nearby_volunteers(
+    task_lat FLOAT,
+    task_lng FLOAT,
+    radius_km FLOAT DEFAULT 25,
+    required_skills TEXT[] DEFAULT '{}'
+)
 RETURNS TABLE (
     user_id UUID,
     full_name VARCHAR,

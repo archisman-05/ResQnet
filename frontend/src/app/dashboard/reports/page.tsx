@@ -52,8 +52,8 @@ export default function ReportsPage() {
       <div className="p-6 space-y-4 max-w-5xl mx-auto">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Community Reports</h1>
-            <p className="text-sm text-gray-500">Incoming issues from the community</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Community Reports</h1>
+            <p className="text-sm text-gray-500 dark:text-white/65">Incoming issues from the community</p>
           </div>
           <button className="btn-primary" onClick={() => setShowForm(true)}>
             <Plus className="w-4 h-4" /> New Report
@@ -63,10 +63,10 @@ export default function ReportsPage() {
         {/* New Report Modal */}
         {showForm && (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up">
-              <div className="flex items-center justify-between p-5 border-b">
-                <h2 className="font-bold text-gray-900">Submit Community Report</h2>
-                <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+            <div className="rounded-2xl border border-white/20 dark:border-white/10 bg-white dark:bg-ink-950 shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-slide-up">
+              <div className="flex items-center justify-between p-5 border-b border-gray-200 dark:border-white/10">
+                <h2 className="font-bold text-gray-900 dark:text-white">Submit Community Report</h2>
+                <button onClick={() => setShowForm(false)} className="p-1 hover:bg-gray-100 dark:hover:bg-white/10 rounded-lg text-gray-600 dark:text-white/70">
                   <X className="w-4 h-4" />
                 </button>
               </div>
@@ -96,17 +96,17 @@ export default function ReportsPage() {
                         <span className="badge bg-green-100 text-green-700">✓ Converted</span>
                       )}
                     </div>
-                    <h3 className="font-semibold text-gray-900">{report.title}</h3>
-                    <p className="text-sm text-gray-500 mt-0.5 line-clamp-2">{report.description}</p>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">{report.title}</h3>
+                    <p className="text-sm text-gray-500 dark:text-white/65 mt-0.5 line-clamp-2">{report.description}</p>
 
                     {report.ai_summary && (
-                      <div className="mt-2 flex items-start gap-1.5 bg-purple-50 border border-purple-100 rounded-lg p-2">
+                      <div className="mt-2 flex items-start gap-1.5 bg-purple-50 dark:bg-purple-500/10 border border-purple-100 dark:border-purple-400/20 rounded-lg p-2">
                         <Sparkles className="w-3.5 h-3.5 text-purple-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-xs text-purple-700">{report.ai_summary}</p>
+                        <p className="text-xs text-purple-700 dark:text-purple-200">{report.ai_summary}</p>
                       </div>
                     )}
 
-                    <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
+                    <div className="mt-2 flex items-center gap-3 text-xs text-gray-500 dark:text-white/60">
                       {(report.address || report.city) && (
                         <span className="flex items-center gap-1">
                           <MapPin className="w-3 h-3" />

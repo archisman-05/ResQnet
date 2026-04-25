@@ -88,9 +88,17 @@ const updateProfile = async (req, res) => {
     bio, skills, languages, availability,
     weekly_hours, address, city, country,
     radius_km, latitude, longitude,
+    phone,
   } = req.body;
 
   try {
+    if (typeof phone === 'string') {
+      await query(
+        `UPDATE users SET phone = $2, updated_at = NOW() WHERE id = $1`,
+        [req.user.id, phone.trim() || null]
+      );
+    }
+
     const result = await query(
       `UPDATE volunteer_profiles SET
           bio = COALESCE($2, bio),
@@ -127,7 +135,7 @@ const getVolunteerById = async (req, res) => {
   try {
     const result = await query(
       `SELECT 
-          u.id, u.full_name, u.email, u.avatar_url, u.created_at,
+          u.id, u.full_name, u.email, u.phone, u.avatar_url, u.created_at,
           vp.*,
           vp.lat AS lat,
           vp.lng AS lng

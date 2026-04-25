@@ -133,6 +133,7 @@ async function autoAssignForTask(taskId, assignedBy, options = {}) {
         assignment_id: a.id,
         task_id: a.task_id,
         status: a.status,
+        taskTitle: task.title,
       });
     });
     io.emit('task:updated', { id: taskId, status: 'assigned' });

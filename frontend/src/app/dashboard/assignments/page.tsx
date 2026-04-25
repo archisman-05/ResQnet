@@ -7,6 +7,9 @@ import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { CheckCircle2, PlayCircle, MapPin, Clock, Loader2, Sparkles, XCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { formatDistanceToNow } from 'date-fns';
+import { useEffect, useState } from 'react';
+import { useSocket } from '@/hooks/useSocket';
+import { Modal } from '@/components/ui/Modal';
 
 interface Assignment {
   id: string;
@@ -28,6 +31,9 @@ interface Assignment {
 export default function AssignmentsPage() {
   const qc = useQueryClient();
   const { user } = useAuthStore();
+  const { on } = useSocket();
+  const [rejectTarget, setRejectTarget] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   const { data, isLoading } = useQuery({
     queryKey: ['my-assignments', user?.id],
@@ -63,12 +69,21 @@ export default function AssignmentsPage() {
   const active    = assignments.filter(a => !a.completed_at);
   const completed = assignments.filter(a => !!a.completed_at);
 
+  useEffect(() => {
+    const cleanups = [
+      on('assignment:new', () => qc.invalidateQueries({ queryKey: ['my-assignments'] })),
+      on('assignment:updated', () => qc.invalidateQueries({ queryKey: ['my-assignments'] })),
+      on('task:updated', () => qc.invalidateQueries({ queryKey: ['my-assignments'] })),
+    ];
+    return () => cleanups.forEach((c) => c());
+  }, [on, qc]);
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6 max-w-3xl mx-auto">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">My Assignments</h1>
-          <p className="text-sm text-gray-500">{active.length} active · {completed.length} completed</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Assignments</h1>
+          <p className="text-sm text-gray-500 dark:text-white/65">{active.length} active · {completed.length} completed</p>
         </div>
 
         {isLoading ? (
@@ -79,19 +94,15 @@ export default function AssignmentsPage() {
           <>
             {active.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Active Tasks</h2>
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-white/60 uppercase tracking-wide">Active Tasks</h2>
                 {active.map(a => (
                   <AssignmentCard
                     key={a.id}
                     assignment={a}
                     onAccept={() => acceptMut.mutate(a.id)}
                     onReject={() => {
-                      const reason = window.prompt('Why are you rejecting this assignment? (required)') ?? '';
-                      if (reason.trim().length < 5) {
-                        toast.error('Reason is required');
-                        return;
-                      }
-                      rejectMut.mutate({ id: a.id, reason });
+                      setRejectTarget(a.id);
+                      setRejectReason('');
                     }}
                     onComplete={(notes) => completeMut.mutate({ id: a.id, notes })}
                     accepting={acceptMut.isPending}
@@ -104,14 +115,14 @@ export default function AssignmentsPage() {
 
             {completed.length > 0 && (
               <div className="space-y-3">
-                <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Completed</h2>
+                <h2 className="text-sm font-semibold text-gray-500 dark:text-white/60 uppercase tracking-wide">Completed</h2>
                 {completed.map(a => (
                   <div key={a.id} className="card p-4 opacity-60">
                     <div className="flex items-start gap-3">
                       <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
                       <div>
                         <p className="font-semibold text-sm">{a.task_title}</p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-xs text-gray-500 dark:text-white/60">
                           Completed {formatDistanceToNow(new Date(a.completed_at!), { addSuffix: true })}
                         </p>
                       </div>
@@ -123,12 +134,50 @@ export default function AssignmentsPage() {
 
             {assignments.length === 0 && (
               <div className="card p-12 text-center">
-                <p className="text-gray-400">No assignments yet. Keep your profile updated to get matched!</p>
+                <p className="text-gray-500 dark:text-white/60">No assignments yet. Keep your profile updated to get matched!</p>
               </div>
             )}
           </>
         )}
       </div>
+      <Modal
+        open={!!rejectTarget}
+        onClose={() => setRejectTarget(null)}
+        title="Reject Assignment"
+        description="Please share a clear reason so admins can reassign quickly."
+        footer={
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={() => setRejectTarget(null)}>
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn-danger"
+              onClick={() => {
+                if (!rejectTarget) return;
+                if (rejectReason.trim().length < 5) {
+                  toast.error('Please provide at least 5 characters.');
+                  return;
+                }
+                rejectMut.mutate({ id: rejectTarget, reason: rejectReason.trim() });
+                setRejectTarget(null);
+              }}
+            >
+              Submit rejection
+            </button>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <label className="label">Reason</label>
+          <textarea
+            className="input min-h-[120px]"
+            placeholder="Ex: I am currently handling a medical emergency in another zone."
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+          />
+        </div>
+      </Modal>
     </DashboardLayout>
   );
 }
@@ -153,7 +202,7 @@ function AssignmentCard({
   };
 
   return (
-    <div className="card p-4 hover:shadow-md transition-shadow">
+    <div className="card p-4 hover:shadow-xl transition-all duration-300 ease-in-out">
       <div className="flex items-start gap-3">
         <div className={`w-2 h-2 rounded-full flex-shrink-0 mt-2 ${urgencyDot[assignment.urgency] ?? 'bg-gray-400'}`} />
         <div className="flex-1 min-w-0">
@@ -169,10 +218,10 @@ function AssignmentCard({
             )}
           </div>
 
-          <p className="font-semibold text-gray-900">{assignment.task_title}</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{assignment.task_title}</p>
 
           {assignment.task_address && (
-            <p className="text-xs text-gray-500 mt-1 flex items-center gap-1">
+            <p className="text-xs text-gray-600 dark:text-white/65 mt-1 flex items-center gap-1">
               <MapPin className="w-3 h-3" /> {assignment.task_address}
             </p>
           )}
@@ -186,7 +235,7 @@ function AssignmentCard({
             </div>
           )}
 
-          <p className="text-xs text-gray-400 mt-2 flex items-center gap-1">
+          <p className="text-xs text-gray-500 dark:text-white/60 mt-2 flex items-center gap-1">
             <Clock className="w-3 h-3" />
             Assigned {formatDistanceToNow(new Date(assignment.created_at), { addSuffix: true })}
           </p>

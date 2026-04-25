@@ -4,36 +4,53 @@ const logger = require('../utils/logger');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 // ✅ Use stable + cheap model
-const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
+const MODEL_NAME = process.env.GEMINI_MODEL || 'gemini-1.5-flash-latest';
 
 // Retry helper
 const sleep = (ms) => new Promise((res) => setTimeout(res, ms));
 
 // ✅ CENTRALIZED SAFE CALL (THIS IS THE REAL FIX)
 const safeGenerate = async (prompt) => {
-  const model = genAI.getGenerativeModel({
-    model: MODEL_NAME,
-    generationConfig: {
-      temperature: 0.7,
-      topP: 0.9,
-      maxOutputTokens: 2048,
-    },
-  });
+  const candidateModels = [
+    MODEL_NAME,
+    'gemini-1.5-flash-latest',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro-latest',
+  ];
 
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    try {
-      const result = await model.generateContent(prompt);
-      return result.response.text().trim();
-    } catch (err) {
-      // Retry only on rate limit
-      if (err.message.includes('429') && attempt < 3) {
-        logger.warn(`Gemini rate limited. Retry ${attempt}...`);
-        await sleep(1500 * attempt);
-      } else {
+  let lastErr = null;
+  for (const modelName of candidateModels) {
+    const model = genAI.getGenerativeModel({
+      model: modelName,
+      generationConfig: {
+        temperature: 0.7,
+        topP: 0.9,
+        maxOutputTokens: 2048,
+      },
+    });
+
+    for (let attempt = 1; attempt <= 2; attempt++) {
+      try {
+        const result = await model.generateContent(prompt);
+        return result.response.text().trim();
+      } catch (err) {
+        lastErr = err;
+        if (err.message?.includes('429') && attempt < 2) {
+          logger.warn(`Gemini rate limited on ${modelName}. Retry ${attempt}...`);
+          await sleep(1200 * attempt);
+          continue;
+        }
+        // Try next model on 404/unsupported model errors.
+        if (err.message?.includes('404') || err.message?.includes('not found') || err.message?.includes('not supported')) {
+          logger.warn(`Gemini model unavailable: ${modelName}`);
+          break;
+        }
         throw err;
       }
     }
   }
+
+  throw lastErr || new Error('Gemini generation failed');
 };
 
 // Helper to clean JSON

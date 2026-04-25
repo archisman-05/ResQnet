@@ -18,6 +18,10 @@ export default function MapPicker({
     googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '',
   });
 
+  // React 19 + @react-google-maps/api typing mismatch workaround (runtime is fine)
+  const GoogleMapAny = GoogleMap as any;
+  const MarkerAny = Marker as any;
+
   const center = useMemo<LatLng>(() => value ?? { lat: 20.5937, lng: 78.9629 }, [value]);
 
   if (loadError) {
@@ -38,7 +42,7 @@ export default function MapPicker({
 
   return (
     <div className="rounded-xl overflow-hidden border border-gray-200">
-      <GoogleMap
+      <GoogleMapAny
         center={center}
         zoom={value ? 13 : 5}
         mapContainerStyle={{ height, width: '100%' }}
@@ -48,15 +52,15 @@ export default function MapPicker({
           fullscreenControl: false,
           clickableIcons: false,
         }}
-        onClick={(e) => {
+        onClick={(e: any) => {
           const lat = e.latLng?.lat();
           const lng = e.latLng?.lng();
           if (lat == null || lng == null) return;
           onChange({ lat, lng });
         }}
       >
-        {value && <Marker position={value} />}
-      </GoogleMap>
+        {value && <MarkerAny position={value} />}
+      </GoogleMapAny>
     </div>
   );
 }

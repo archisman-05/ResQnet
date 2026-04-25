@@ -32,7 +32,7 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-50 to-white flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-blue-50 dark:from-ink-950 dark:via-ink-950 dark:to-slate-900 flex items-center justify-center p-4 text-gray-900 dark:text-white">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="w-12 h-12 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg mb-3">
@@ -42,7 +42,7 @@ export default function SignupPage() {
           <p className="text-sm text-gray-500">Make a difference in your community</p>
         </div>
 
-        <div className="card p-6 shadow-md">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-white/5">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">

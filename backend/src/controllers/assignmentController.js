@@ -17,6 +17,16 @@ const isValidRejection = (reason) => {
   return VALID_REJECTION_REASONS.some((k) => r.includes(k));
 };
 
+const createNotification = async ({ userId, type, title, message, data = {} }) => {
+  const result = await query(
+    `INSERT INTO notifications (user_id, type, title, message, data)
+     VALUES ($1, $2, $3, $4, $5)
+     RETURNING *`,
+    [userId, type, title, message, data]
+  );
+  return result.rows[0];
+};
+
 // POST /api/assignments — Manual assign
 const createAssignment = async (req, res) => {
   const { task_id, volunteer_id, match_score, ai_match_reason } = req.body;
@@ -60,12 +70,20 @@ const createAssignment = async (req, res) => {
     await query(`UPDATE volunteer_profiles SET availability = 'busy' WHERE user_id = $1`, [volunteer_id]);
 
     const io = getIO();
+    const volunteerNotification = await createNotification({
+      userId: volunteer_id,
+      type: 'task_assigned',
+      title: 'New task assigned',
+      message: `You have been assigned "${taskRes.rows[0].title}".`,
+      data: { task_id, assignment_id: assignRes.rows[0].id },
+    });
     if (io) {
       io.to(`volunteer:${volunteer_id}`).emit('assignment:new', {
         taskId: task_id,
         taskTitle: taskRes.rows[0].title,
         message: 'You have been assigned to a new task',
       });
+      io.to(`user:${volunteer_id}`).emit('notification:new', volunteerNotification);
       io.emit('task:updated', { id: task_id, status: 'assigned' });
     }
 
@@ -88,6 +106,8 @@ const getAssignments = async (req, res) => {
   if (req.user.role === 'volunteer') {
     conditions.push(`a.volunteer_id = $${idx++}`);
     params.push(req.user.id);
+    conditions.push(`a.status <> $${idx++}`);
+    params.push('rejected');
   } else {
     if (volunteer_id) { conditions.push(`a.volunteer_id = $${idx++}`); params.push(volunteer_id); }
     if (task_id) { conditions.push(`a.task_id = $${idx++}`); params.push(task_id); }
@@ -159,7 +179,7 @@ const rejectAssignment = async (req, res) => {
     const result = await query(
       `UPDATE assignments
        SET status = 'rejected', reason = $3, updated_at = NOW()
-       WHERE id = $1 AND volunteer_id = $2 AND status = 'pending'
+       WHERE id = $1 AND volunteer_id = $2 AND status IN ('pending', 'accepted')
        RETURNING *`,
       [req.params.id, req.user.id, String(reason).trim()]
     );
@@ -180,9 +200,21 @@ const rejectAssignment = async (req, res) => {
     }
 
     const io = getIO();
+    const taskOwnerRes = await query(`SELECT created_by, title FROM tasks WHERE id = $1`, [result.rows[0].task_id]);
+    const ownerId = taskOwnerRes.rows[0]?.created_by;
+    const ownerNotif = ownerId
+      ? await createNotification({
+          userId: ownerId,
+          type: 'assignment_rejected',
+          title: 'Volunteer rejected assignment',
+          message: `${req.user.full_name} rejected "${taskOwnerRes.rows[0]?.title || 'task'}".`,
+          data: { assignment_id: result.rows[0].id, task_id: result.rows[0].task_id, reason: String(reason).trim() },
+        })
+      : null;
     if (io) {
       io.emit('assignment:updated', { id: result.rows[0].id, status: 'rejected' });
       io.emit('task:updated', { id: result.rows[0].task_id, status: 'pending' });
+      if (ownerNotif && ownerId) io.to(`user:${ownerId}`).emit('notification:new', ownerNotif);
     }
 
     return res.json({
@@ -222,7 +254,21 @@ const completeAssignment = async (req, res) => {
     );
 
     const io = getIO();
-    if (io) io.emit('task:updated', { id: asgmt.task_id, status: 'completed' });
+    const ownerRes = await query(`SELECT created_by, title FROM tasks WHERE id = $1`, [asgmt.task_id]);
+    const ownerId = ownerRes.rows[0]?.created_by;
+    const completionNotif = ownerId
+      ? await createNotification({
+          userId: ownerId,
+          type: 'assignment_completed',
+          title: 'Task completed',
+          message: `${req.user.full_name} marked "${ownerRes.rows[0]?.title || 'task'}" as completed.`,
+          data: { assignment_id: asgmt.id, task_id: asgmt.task_id },
+        })
+      : null;
+    if (io) {
+      io.emit('task:updated', { id: asgmt.task_id, status: 'completed' });
+      if (completionNotif && ownerId) io.to(`user:${ownerId}`).emit('notification:new', completionNotif);
+    }
 
     return res.json({ success: true, data: { assignment: asgmt } });
   } catch (err) {

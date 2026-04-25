@@ -184,4 +184,40 @@ const getWeeklySummary = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getWeeklySummary };
+const getVolunteerStats = async (req, res) => {
+  try {
+    const myId = req.user.id;
+    const [assignmentsRes, alertsRes] = await Promise.all([
+      query(
+        `SELECT
+            COUNT(*) FILTER (WHERE status IN ('pending','accepted')) AS pending_tasks,
+            COUNT(*) FILTER (WHERE status = 'completed') AS completed_tasks,
+            COUNT(*) AS total_assignments
+         FROM assignments
+         WHERE volunteer_id = $1`,
+        [myId]
+      ),
+      query(
+        `SELECT COUNT(*) AS unread_notifications
+         FROM notifications
+         WHERE user_id = $1 AND is_read = FALSE`,
+        [myId]
+      ),
+    ]);
+
+    return res.json({
+      success: true,
+      data: {
+        pending_tasks: Number(assignmentsRes.rows[0].pending_tasks || 0),
+        completed_tasks: Number(assignmentsRes.rows[0].completed_tasks || 0),
+        total_assignments: Number(assignmentsRes.rows[0].total_assignments || 0),
+        unread_notifications: Number(alertsRes.rows[0].unread_notifications || 0),
+      },
+    });
+  } catch (err) {
+    logger.error('Volunteer stats error', { error: err.message });
+    return res.status(500).json({ success: false, message: 'Failed to fetch volunteer stats' });
+  }
+};
+
+module.exports = { getStats, getWeeklySummary, getVolunteerStats };

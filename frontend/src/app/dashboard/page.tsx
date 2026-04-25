@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi, tasksApi } from '@/lib/api';
 import { useAuthStore } from '@/store/authStore';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
@@ -10,17 +10,22 @@ import {
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import Link from 'next/link';
+import { useSocket } from '@/hooks/useSocket';
+import { useEffect } from 'react';
 
 const URGENCY_COLORS: Record<string, string> = { critical:'#7c3aed', high:'#ef4444', medium:'#f59e0b', low:'#22c55e' };
 const CATEGORY_COLORS = ['#22c55e','#3b82f6','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#84cc16'];
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
+  const qc = useQueryClient();
+  const { on } = useSocket();
 
   const { data: statsData, isLoading: statsLoading, refetch } = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn:  () => dashboardApi.getStats().then(r => r.data.data),
     refetchInterval: 30_000,
+    enabled: user?.role === 'admin',
   });
 
   const { data: summaryData, isLoading: summaryLoading } = useQuery({
@@ -36,9 +41,34 @@ export default function DashboardPage() {
     refetchInterval: 15_000,
   });
 
+  const { data: volunteerStatsData, isLoading: volunteerStatsLoading } = useQuery({
+    queryKey: ['volunteer-dashboard-stats'],
+    queryFn: () => dashboardApi.getVolunteerStats().then((r) => r.data.data),
+    refetchInterval: 10_000,
+    enabled: user?.role === 'volunteer',
+  });
+
   const stats     = statsData;
   const summary   = summaryData?.summary;
   const recentTasks = recentTasksData || [];
+  const volunteerStats = volunteerStatsData;
+  const isVolunteer = user?.role === 'volunteer';
+
+  useEffect(() => {
+    const cleanups = [
+      on('task:new', () => {
+        qc.invalidateQueries({ queryKey: ['recent-tasks'] });
+        qc.invalidateQueries({ queryKey: ['volunteer-dashboard-stats'] });
+      }),
+      on('task:updated', () => {
+        qc.invalidateQueries({ queryKey: ['recent-tasks'] });
+        qc.invalidateQueries({ queryKey: ['volunteer-dashboard-stats'] });
+      }),
+      on('assignment:new', () => qc.invalidateQueries({ queryKey: ['volunteer-dashboard-stats'] })),
+      on('sos:alert', () => qc.invalidateQueries({ queryKey: ['volunteer-dashboard-stats'] })),
+    ];
+    return () => cleanups.forEach((c) => c());
+  }, [on, qc]);
 
   return (
     <DashboardLayout>
@@ -46,8 +76,8 @@ export default function DashboardPage() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-sm text-gray-500">Real-time NGO resource overview</p>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+            <p className="text-sm text-gray-500 dark:text-white/65">Real-time NGO resource overview</p>
           </div>
           <button onClick={() => refetch()} className="btn-secondary text-xs">
             <RefreshCw className="w-3.5 h-3.5" /> Refresh
@@ -55,7 +85,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Stat cards */}
-        {statsLoading ? (
+        {(isVolunteer ? volunteerStatsLoading : statsLoading) ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[...Array(4)].map((_, i) => (
               <div key={i} className="stat-card animate-pulse">
@@ -66,14 +96,25 @@ export default function DashboardPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard icon={ClipboardList}  label="Total Tasks"       value={stats?.tasks?.total}        color="blue"   sub={`${stats?.tasks?.pending} pending`} />
-            <StatCard icon={CheckCircle2}   label="Completed"         value={stats?.tasks?.completed}    color="green"  sub={`${stats?.tasks?.completed_this_week} this week`} />
-            <StatCard icon={Users}          label="Volunteers"        value={stats?.volunteers?.total}   color="purple" sub={`${stats?.volunteers?.available} available`} />
-            <StatCard icon={FileText}       label="Reports"           value={stats?.reports?.total}      color="amber"  sub={`${stats?.reports?.pending_review} pending review`} />
+            {isVolunteer ? (
+              <>
+                <StatCard icon={ClipboardList} label="Pending Tasks" value={volunteerStats?.pending_tasks} color="blue" sub="Awaiting action" />
+                <StatCard icon={CheckCircle2} label="Completed Tasks" value={volunteerStats?.completed_tasks} color="green" sub="Successfully closed" />
+                <StatCard icon={Users} label="Total Assignments" value={volunteerStats?.total_assignments} color="purple" sub="All-time assignments" />
+                <StatCard icon={FileText} label="Unread Alerts" value={volunteerStats?.unread_notifications} color="amber" sub="Check notifications" />
+              </>
+            ) : (
+              <>
+                <StatCard icon={ClipboardList}  label="Total Tasks"       value={stats?.tasks?.total}        color="blue"   sub={`${stats?.tasks?.pending} pending`} />
+                <StatCard icon={CheckCircle2}   label="Completed"         value={stats?.tasks?.completed}    color="green"  sub={`${stats?.tasks?.completed_this_week} this week`} />
+                <StatCard icon={Users}          label="Volunteers"        value={stats?.volunteers?.total}   color="purple" sub={`${stats?.volunteers?.available} available`} />
+                <StatCard icon={FileText}       label="Reports"           value={stats?.reports?.total}      color="amber"  sub={`${stats?.reports?.pending_review} pending review`} />
+              </>
+            )}
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-6">
+        {!isVolunteer && <div className="grid lg:grid-cols-3 gap-6">
           {/* Urgency breakdown */}
           <div className="card p-5">
             <h3 className="font-semibold text-sm mb-4">Active Tasks by Urgency</h3>
@@ -107,7 +148,7 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             ) : <EmptyChart />}
           </div>
-        </div>
+        </div>}
 
         <div className="grid lg:grid-cols-2 gap-6">
           {/* AI Weekly Summary */}
@@ -125,7 +166,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-gray-700">{summary.executive_summary}</p>
                 {summary.highlights?.length > 0 && (
                   <div>
-                    <p className="text-xs font-medium text-gray-500 mb-1.5">Highlights</p>
+                    <p className="text-xs font-medium text-gray-500 dark:text-white/60 mb-1.5">Highlights</p>
                     <ul className="space-y-1">
                       {summary.highlights.map((h: string, i: number) => (
                         <li key={i} className="flex items-start gap-1.5 text-xs text-gray-600">
@@ -139,7 +180,7 @@ export default function DashboardPage() {
                   <p className="text-xs text-brand-700 bg-brand-50 px-3 py-2 rounded-lg italic">"{summary.impact_statement}"</p>
                 )}
               </div>
-            ) : <p className="text-sm text-gray-400">No summary available yet.</p>}
+            ) : <p className="text-sm text-gray-500 dark:text-white/60">No summary available yet.</p>}
           </div>
 
           {/* Recent tasks */}
@@ -150,13 +191,13 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-2">
               {recentTasks.length === 0 ? (
-                <p className="text-sm text-gray-400">No tasks yet.</p>
+                <p className="text-sm text-gray-500 dark:text-white/60">No tasks yet.</p>
               ) : recentTasks.map((task: Record<string, unknown>) => (
-                <div key={task.id as string} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+                <div key={task.id as string} className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-white/10 transition-all duration-300 ease-in-out">
                   <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: URGENCY_COLORS[task.urgency as string] || '#6b7280' }} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{task.title as string}</p>
-                    <p className="text-xs text-gray-400">{task.category as string} · {task.city as string || 'Unknown area'}</p>
+                    <p className="text-xs text-gray-500 dark:text-white/60">{task.category as string} · {task.city as string || 'Unknown area'}</p>
                   </div>
                   <span className={`badge-${task.status}`}>{(task.status as string)?.replace('_',' ')}</span>
                 </div>
@@ -166,7 +207,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Alerts */}
-        {stats?.tasks?.pending > 10 && (
+        {!isVolunteer && stats?.tasks?.pending > 10 && (
           <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-xl p-4">
             <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <div>
@@ -185,15 +226,15 @@ export default function DashboardPage() {
 function StatCard({ icon: Icon, label, value, color, sub }: { icon: React.ElementType; label: string; value?: number | string; color: string; sub?: string }) {
   const colors: Record<string, string> = { blue:'bg-blue-50 text-blue-600', green:'bg-green-50 text-green-600', purple:'bg-purple-50 text-purple-600', amber:'bg-amber-50 text-amber-600' };
   return (
-    <div className="stat-card">
+    <div className="stat-card transition-all duration-300 ease-in-out hover:shadow-2xl">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
+        <span className="text-xs font-medium text-gray-500 dark:text-white/60 uppercase tracking-wide">{label}</span>
         <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${colors[color]}`}>
           <Icon className="w-4 h-4" />
         </div>
       </div>
-      <p className="text-3xl font-bold text-gray-900">{value ?? '–'}</p>
-      {sub && <p className="text-xs text-gray-400">{sub}</p>}
+      <p className="text-3xl font-bold text-gray-900 dark:text-white">{value ?? '–'}</p>
+      {sub && <p className="text-xs text-gray-500 dark:text-white/60">{sub}</p>}
     </div>
   );
 }
@@ -203,7 +244,7 @@ function EmptyChart() {
     <div className="h-[180px] flex items-center justify-center">
       <div className="text-center">
         <TrendingUp className="w-8 h-8 text-gray-200 mx-auto mb-2" />
-        <p className="text-xs text-gray-400">No data yet</p>
+        <p className="text-xs text-gray-500 dark:text-white/60">No data yet</p>
       </div>
     </div>
   );

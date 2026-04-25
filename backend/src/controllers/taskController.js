@@ -117,9 +117,21 @@ const getTasks = async (req, res) => {
       `SELECT 
           t.*,
           u.full_name AS creator_name,
-          (SELECT COUNT(*) FROM assignments a WHERE a.task_id = t.id) AS assignment_count
+          (SELECT COUNT(*) FROM assignments a WHERE a.task_id = t.id) AS assignment_count,
+          (
+            SELECT COALESCE(
+              json_agg(json_build_object('volunteer_id', vu.id, 'volunteer_name', vu.full_name) ORDER BY vu.full_name),
+              '[]'::json
+            )
+            FROM assignments a2
+            JOIN users vu ON vu.id = a2.volunteer_id
+            WHERE a2.task_id = t.id AND a2.status IN ('pending', 'accepted', 'completed')
+          ) AS assigned_volunteers,
+          leader_u.full_name AS leader_name,
+          (t.metadata->>'leader_id') AS leader_id
        FROM tasks t
        LEFT JOIN users u ON u.id = t.created_by
+       LEFT JOIN users leader_u ON leader_u.id::text = (t.metadata->>'leader_id')
        ${whereClause}
        ORDER BY t.ai_priority_score DESC, t.created_at DESC
        LIMIT $${idx++} OFFSET $${idx++}`,
@@ -330,6 +342,104 @@ const getAreaInsights = async (req, res) => {
   }
 };
 
+const requestJoinTask = async (req, res) => {
+  const { message } = req.body || {};
+  try {
+    const taskRes = await query(
+      `SELECT id, title, created_by, status FROM tasks WHERE id = $1`,
+      [req.params.id]
+    );
+    if (!taskRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+    const task = taskRes.rows[0];
+    if (!task.created_by) {
+      return res.status(400).json({ success: false, message: 'Task has no owner' });
+    }
+    if (['completed', 'cancelled'].includes(task.status)) {
+      return res.status(400).json({ success: false, message: 'Task is not open for join requests' });
+    }
+
+    const existing = await query(
+      `SELECT id FROM assignments WHERE task_id = $1 AND volunteer_id = $2 AND status IN ('pending','accepted')`,
+      [task.id, req.user.id]
+    );
+    if (existing.rows.length) {
+      return res.status(409).json({ success: false, message: 'You already requested or got assigned for this task' });
+    }
+
+    const notifRes = await query(
+      `INSERT INTO notifications (user_id, type, title, message, data)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING *`,
+      [
+        task.created_by,
+        'task_join_request',
+        'Volunteer join request',
+        `${req.user.full_name} requested to join "${task.title}".`,
+        {
+          task_id: task.id,
+          task_title: task.title,
+          volunteer_id: req.user.id,
+          volunteer_name: req.user.full_name,
+          request_message: String(message || '').trim(),
+        },
+      ]
+    );
+
+    const io = getIO();
+    if (io) {
+      io.to(`user:${task.created_by}`).emit('notification:new', notifRes.rows[0]);
+      io.to('admin').emit('notification:new', notifRes.rows[0]);
+    }
+
+    return res.status(201).json({ success: true, data: { notification: notifRes.rows[0] } });
+  } catch (err) {
+    logger.error('Request join task error', { error: err.message });
+    return res.status(500).json({ success: false, message: 'Failed to send join request' });
+  }
+};
+
+const setTaskLeader = async (req, res) => {
+  const { volunteer_id } = req.body || {};
+  if (!volunteer_id) {
+    return res.status(400).json({ success: false, message: 'volunteer_id is required' });
+  }
+  try {
+    const taskRes = await query(`SELECT id FROM tasks WHERE id = $1`, [req.params.id]);
+    if (!taskRes.rows.length) {
+      return res.status(404).json({ success: false, message: 'Task not found' });
+    }
+
+    const assignmentRes = await query(
+      `SELECT id
+       FROM assignments
+       WHERE task_id = $1 AND volunteer_id = $2 AND status IN ('pending', 'accepted', 'completed')`,
+      [req.params.id, volunteer_id]
+    );
+    if (!assignmentRes.rows.length) {
+      return res.status(400).json({ success: false, message: 'Volunteer is not assigned to this task' });
+    }
+
+    const result = await query(
+      `UPDATE tasks
+       SET metadata = jsonb_set(COALESCE(metadata, '{}'::jsonb), '{leader_id}', to_jsonb($2::text), true),
+           updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [req.params.id, volunteer_id]
+    );
+
+    const io = getIO();
+    if (io) io.emit('task:updated', { id: req.params.id, leader_id: volunteer_id });
+
+    return res.json({ success: true, data: { task: result.rows[0] } });
+  } catch (err) {
+    logger.error('Set task leader error', { error: err.message });
+    return res.status(500).json({ success: false, message: 'Failed to set leader' });
+  }
+};
+
 module.exports = {
   createTask,
   getTasks,
@@ -339,4 +449,6 @@ module.exports = {
   getTaskMatches,
   autoAssign,
   getAreaInsights,
+  requestJoinTask,
+  setTaskLeader,
 };

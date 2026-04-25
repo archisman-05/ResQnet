@@ -5,9 +5,13 @@ export interface UserProfile {
   skills: string[];
   languages?: string[];
   availability: string;
+  address?: string;
   city: string;
+  country?: string;
   rating: number;
   total_tasks_done: number;
+  grace_points?: number;
+  experience_years?: number;
   lat?: number | null;
   lng?: number | null;
   radius_km?: number;
@@ -19,6 +23,7 @@ export interface User {
   id: string;
   email: string;
   full_name: string;
+  phone?: string | null;
   role: 'admin' | 'volunteer';
   avatar_url?: string | null;
   profile?: UserProfile;
@@ -30,6 +35,7 @@ interface AuthState {
   refreshToken: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  hasHydratedAuth: boolean;
 
   login:    (email: string, password: string) => Promise<void>;
   signup:   (data: Record<string, unknown>) => Promise<void>;
@@ -58,6 +64,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshToken:    null,
   isLoading:       false,
   isAuthenticated: false,
+  hasHydratedAuth: false,
 
   login: async (email, password) => {
     set({ isLoading: true });
@@ -66,7 +73,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { user, accessToken, refreshToken } = res.data.data;
       ls.set('accessToken',  accessToken);
       ls.set('refreshToken', refreshToken);
-      set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
+      set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false, hasHydratedAuth: true });
     } catch (err) {
       set({ isLoading: false });
       throw err;
@@ -80,7 +87,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const { user, accessToken, refreshToken } = res.data.data;
       ls.set('accessToken',  accessToken);
       ls.set('refreshToken', refreshToken);
-      set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false });
+      set({ user, accessToken, refreshToken, isAuthenticated: true, isLoading: false, hasHydratedAuth: true });
     } catch (err) {
       set({ isLoading: false });
       throw err;
@@ -90,25 +97,31 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   logout: async () => {
     ls.del('accessToken');
     ls.del('refreshToken');
-    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+    set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, hasHydratedAuth: true });
     window.location.href = '/login';
   },
 
   // Called once on client mount by AuthBootstrap
   fetchMe: async () => {
     const token = ls.get('accessToken');
-    if (!token) { set({ isAuthenticated: false }); return; }
+    if (!token) { set({ isAuthenticated: false, hasHydratedAuth: true }); return; }
 
     // Optimistically set token so api calls can attach it
     set({ accessToken: token, refreshToken: ls.get('refreshToken') });
 
     try {
       const res = await authApi.me();
-      set({ user: res.data.data as User, isAuthenticated: true });
-    } catch {
-      ls.del('accessToken');
-      ls.del('refreshToken');
-      set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false });
+      set({ user: res.data.data as User, isAuthenticated: true, hasHydratedAuth: true });
+    } catch (err: any) {
+      // Keep session for transient backend errors; only hard-logout on auth failures.
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        ls.del('accessToken');
+        ls.del('refreshToken');
+        set({ user: null, accessToken: null, refreshToken: null, isAuthenticated: false, hasHydratedAuth: true });
+        return;
+      }
+      set({ isAuthenticated: true, hasHydratedAuth: true });
     }
   },
 }));

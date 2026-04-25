@@ -4,6 +4,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
+import { useSosStore } from '@/features/sos/store/sosStore';
 
 let globalSocket: Socket | null = null;
 
@@ -77,6 +78,7 @@ export const useSocket = () => {
 export const useRealtimeNotifications = () => {
   const { on } = useSocket();
   const { user } = useAuthStore();
+  const setSosAlert = useSosStore((s) => s.setAlert);
 
   useEffect(() => {
     if (!user) return;
@@ -116,6 +118,44 @@ export const useRealtimeNotifications = () => {
       );
     }
 
+    cleanups.push(
+      on('sos:alert', (data) => {
+        const d = data as any;
+        const lat = Number(d.lat);
+        const lng = Number(d.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        setSosAlert({
+          id: d.id || `sos_${Date.now()}`,
+          lat,
+          lng,
+          user_id: String(d.user_id ?? 'unknown'),
+          created_at: String(d.created_at ?? new Date().toISOString()),
+          emergency_details: typeof d.emergency_details === 'string' ? d.emergency_details : undefined,
+          nearby_ngos: d.nearby_ngos,
+          nearby_volunteers: d.nearby_volunteers,
+        });
+        toast.error('SOS alert received: emergency response needed.', { duration: 7000 });
+      })
+    );
+
+    cleanups.push(
+      on('notification:new', (data) => {
+        const d = data as any;
+        toast((d?.title || 'New notification') as string, {
+          icon: '🔔',
+          duration: 5000,
+        });
+      })
+    );
+
+    cleanups.push(
+      on('sos:ack', (data) => {
+        const d = data as any;
+        toast.success(`${d?.responder_name || 'Responder'} acknowledged your SOS`, { duration: 6000 });
+      })
+    );
+
     return () => cleanups.forEach((c) => c());
-  }, [user, on]);
+  }, [user, on, setSosAlert]);
 };

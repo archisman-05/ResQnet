@@ -65,31 +65,31 @@ export default function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
         <div className="card p-4 space-y-3">
           {aiResult.summary && (
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Summary</p>
-              <p className="text-sm text-gray-800">{aiResult.summary}</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-white/60 uppercase tracking-wide mb-1">Summary</p>
+              <p className="text-sm text-gray-800 dark:text-white/85">{aiResult.summary}</p>
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Urgency Detected</p>
+              <p className="text-xs font-medium text-gray-500 dark:text-white/60 uppercase tracking-wide mb-1">Urgency Detected</p>
               <span className={`badge-${aiResult.urgency}`}>{aiResult.urgency?.toUpperCase()}</span>
-              {aiResult.urgency_reason && <p className="text-xs text-gray-500 mt-1">{aiResult.urgency_reason}</p>}
+              {aiResult.urgency_reason && <p className="text-xs text-gray-500 dark:text-white/65 mt-1">{aiResult.urgency_reason}</p>}
             </div>
             {aiResult.required_skills?.length ? (
               <div>
-                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Skills Needed</p>
+                <p className="text-xs font-medium text-gray-500 dark:text-white/60 uppercase tracking-wide mb-1">Skills Needed</p>
                 <div className="flex flex-wrap gap-1">
                   {aiResult.required_skills.map(s => (
-                    <span key={s} className="badge bg-blue-50 text-blue-700">{s}</span>
+                    <span key={s} className="badge bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200">{s}</span>
                   ))}
                 </div>
               </div>
             ) : null}
           </div>
           {aiResult.recommended_action && (
-            <div className="bg-brand-50 border border-brand-100 rounded-lg p-3">
-              <p className="text-xs font-medium text-brand-700 mb-0.5">Recommended Action</p>
-              <p className="text-sm text-brand-800">{aiResult.recommended_action}</p>
+            <div className="bg-brand-50 dark:bg-brand-500/15 border border-brand-100 dark:border-brand-400/20 rounded-lg p-3">
+              <p className="text-xs font-medium text-brand-700 dark:text-brand-200 mb-0.5">Recommended Action</p>
+              <p className="text-sm text-brand-800 dark:text-brand-100">{aiResult.recommended_action}</p>
             </div>
           )}
         </div>
@@ -167,9 +167,9 @@ export default function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
         />
       </div>
 
-      <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-lg p-3">
+      <div className="flex items-start gap-2 bg-amber-50 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-300/20 rounded-lg p-3">
         <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-        <p className="text-xs text-amber-700">
+        <p className="text-xs text-amber-700 dark:text-amber-200">
           Your report will be analysed by AI to classify urgency and recommend volunteers automatically.
         </p>
       </div>
