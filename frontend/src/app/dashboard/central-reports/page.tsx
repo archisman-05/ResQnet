@@ -1,19 +1,26 @@
 'use client';
 
+import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
 import { reportsApi } from '@/lib/api';
 import { Loader2 } from 'lucide-react';
 
 export default function CentralReportsPage() {
+  const [cityFilter, setCityFilter] = useState('');
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['central-reports-insights'],
-    queryFn: () => reportsApi.centralInsights().then((r) => r.data.data),
+    queryKey: ['central-reports-insights', cityFilter],
+    queryFn: () => reportsApi.centralInsights({ city: cityFilter || undefined }).then((r) => r.data.data),
     refetchInterval: 60_000,
   });
 
   const summary = data?.summary;
   const ai = data?.ai_insights;
+  const recentReports = summary?.recent_reports || [];
+  const cityOptions = useMemo(
+    () => ((summary?.top_cities || []).map((c: { city: string }) => c.city).filter((c: string) => c && c !== 'Unknown')),
+    [summary?.top_cities]
+  );
 
   return (
     <DashboardLayout>
@@ -23,6 +30,26 @@ export default function CentralReportsPage() {
           <p className="text-sm text-gray-500 dark:text-white/65">
             NGO-wide reporting with AI forecasting for future needs.
           </p>
+        </div>
+        <div className="card p-4">
+          <div className="flex flex-col sm:flex-row sm:items-end gap-3">
+            <div className="flex-1">
+              <label className="label">Filter recommendations by location</label>
+              <input
+                className="input"
+                value={cityFilter}
+                onChange={(e) => setCityFilter(e.target.value)}
+                placeholder="Type city/area (e.g. Kolkata)"
+                list="central-city-options"
+              />
+              <datalist id="central-city-options">
+                {cityOptions.map((city: string) => (
+                  <option key={city} value={city} />
+                ))}
+              </datalist>
+            </div>
+            <button className="btn-secondary" onClick={() => setCityFilter('')}>Clear</button>
+          </div>
         </div>
 
         {isLoading ? (
@@ -57,6 +84,60 @@ export default function CentralReportsPage() {
                   <li key={r} className="text-sm text-gray-600 dark:text-white/70">- {r}</li>
                 ))}
               </ul>
+              <div className="mt-4 grid sm:grid-cols-2 gap-3">
+                <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
+                  <p className="text-xs text-gray-500 dark:text-white/60 mb-1">Future Demand (Next 30 Days)</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {ai?.future_needs_forecast?.next_30_days_estimated_reports ?? '—'} reports
+                  </p>
+                  {Array.isArray(ai?.future_needs_forecast?.risk_areas) && ai.future_needs_forecast.risk_areas.length > 0 && (
+                    <p className="text-xs text-gray-600 dark:text-white/70 mt-1">
+                      Risk areas: {ai.future_needs_forecast.risk_areas.join(', ')}
+                    </p>
+                  )}
+                </div>
+                <div className="rounded-lg border border-gray-200 dark:border-white/10 p-3">
+                  <p className="text-xs text-gray-500 dark:text-white/60 mb-1">Volunteer Need Forecast</p>
+                  <p className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {ai?.volunteer_forecast?.volunteers_needed_total ?? ai?.resource_needs?.volunteers_needed ?? '—'} volunteers
+                  </p>
+                  <p className="text-xs text-gray-600 dark:text-white/70 mt-1">
+                    Surge buffer: {ai?.volunteer_forecast?.surge_buffer ?? 0}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="card p-4">
+              <h2 className="font-semibold text-gray-900 dark:text-white mb-3">Recent Reports with Location</h2>
+              {recentReports.length === 0 ? (
+                <p className="text-sm text-gray-500 dark:text-white/65">No reports found for this location filter.</p>
+              ) : (
+                <div className="space-y-3">
+                  {recentReports.map((report: any) => (
+                    <div key={report.id} className="rounded-xl border border-gray-200 dark:border-white/10 p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-medium text-sm text-gray-900 dark:text-white">{report.title}</p>
+                        <span className={`badge-${report.urgency}`}>{report.urgency}</span>
+                      </div>
+                      <p className="text-xs text-gray-600 dark:text-white/70 mt-1">
+                        {(report.address || report.city || 'Location unavailable')} · {new Date(report.created_at).toLocaleDateString()}
+                      </p>
+                      {report.lat && report.lng && (
+                        <div className="mt-2 rounded-lg overflow-hidden border border-gray-200 dark:border-white/15 h-40">
+                          <iframe
+                            title={`map-${report.id}`}
+                            className="w-full h-full"
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                            src={`https://maps.google.com/maps?q=${encodeURIComponent(String(report.lat))},${encodeURIComponent(String(report.lng))}&z=14&output=embed`}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </>
         )}

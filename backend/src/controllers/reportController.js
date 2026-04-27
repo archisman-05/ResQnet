@@ -22,12 +22,10 @@ const createReport = async (req, res) => {
   try {
     // 1. AI analysis (non-blocking fallback)
     let aiData = {};
-    if (process.env.GEMINI_API_KEY) {
-      try {
-        aiData = await geminiService.analyzeReport({ title, description, category, location_address: address });
-      } catch (e) {
-        logger.warn('Gemini analysis failed for report', { error: e.message });
-      }
+    try {
+      aiData = await geminiService.analyzeReport({ title, description, category, location_address: address });
+    } catch (e) {
+      logger.warn('Gemini analysis failed for report', { error: e.message });
     }
 
     // 2. Create report
@@ -218,34 +216,57 @@ const convertToTask = async (req, res) => {
 // GET /api/reports/central/insights — Admin AI forecasting
 const getCentralInsights = async (req, res) => {
   try {
-    const [summaryRes, cityRes, categoryRes, openTasksRes] = await Promise.all([
+    const { city = '' } = req.query;
+    const cityFilter = String(city || '').trim();
+    const locationExpr = `COALESCE(NULLIF(TRIM(city), ''), NULLIF(TRIM(address), ''), 'Unknown')`;
+
+    const reportFilterClause = cityFilter ? `WHERE LOWER(${locationExpr}) LIKE LOWER($1)` : '';
+    const reportFilterParams = cityFilter ? [`%${cityFilter}%`] : [];
+
+    const [summaryRes, cityRes, categoryRes, openTasksRes, reportsRes] = await Promise.all([
       query(
         `SELECT
             COUNT(*) AS total_reports,
             COUNT(*) FILTER (WHERE is_converted = FALSE) AS pending_reports,
             COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '30 days') AS reports_last_30d
-         FROM reports`
+         FROM reports
+         ${reportFilterClause}`,
+        reportFilterParams
       ),
       query(
-        `SELECT COALESCE(city, 'Unknown') AS city, COUNT(*) AS count
+        `SELECT ${locationExpr} AS city, COUNT(*) AS count
          FROM reports
-         GROUP BY city
+         ${reportFilterClause}
+         GROUP BY 1
          ORDER BY count DESC
-         LIMIT 8`
+         LIMIT 8`,
+        reportFilterParams
       ),
       query(
         `SELECT category, urgency, COUNT(*) AS count
          FROM reports
+         ${reportFilterClause}
          GROUP BY category, urgency
          ORDER BY count DESC
-         LIMIT 20`
+         LIMIT 20`,
+        reportFilterParams
       ),
       query(
-        `SELECT title, category, urgency, city, created_at
+        `SELECT title, category, urgency, ${locationExpr} AS city, created_at, lat, lng
          FROM tasks
          WHERE status NOT IN ('completed', 'cancelled')
+         ${cityFilter ? `AND LOWER(${locationExpr}) LIKE LOWER($1)` : ''}
          ORDER BY created_at DESC
-         LIMIT 25`
+         LIMIT 25`,
+        reportFilterParams
+      ),
+      query(
+        `SELECT id, title, category, urgency, ${locationExpr} AS city, address, lat, lng, created_at
+         FROM reports
+         ${reportFilterClause}
+         ORDER BY created_at DESC
+         LIMIT 20`,
+        reportFilterParams
       ),
     ]);
 
@@ -257,12 +278,15 @@ const getCentralInsights = async (req, res) => {
       top_cities: cityRes.rows,
       category_urgency_distribution: categoryRes.rows,
       open_tasks: openTasksRes.rows,
+      location_filter: cityFilter || null,
+      recent_reports: reportsRes.rows.map((r) => ({
+        ...r,
+        lat: r.lat !== null ? Number(r.lat) : null,
+        lng: r.lng !== null ? Number(r.lng) : null,
+      })),
     };
 
-    let aiInsights = null;
-    if (process.env.GEMINI_API_KEY) {
-      aiInsights = await geminiService.generateAreaInsights('Central NGO Network', openTasksRes.rows);
-    }
+    const aiInsights = await geminiService.generateCentralInsights(aiPayload);
 
     return res.json({
       success: true,

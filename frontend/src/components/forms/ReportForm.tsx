@@ -39,6 +39,7 @@ export default function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.latitude || !form.longitude) return toast.error('Please set your location');
+    if (!form.address.trim()) return toast.error('Please enter the location/address');
 
     setSubmitting(true);
     try {
@@ -156,12 +157,23 @@ export default function ReportForm({ onSuccess }: { onSuccess?: () => void }) {
           {geoLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <MapPin className="w-3 h-3" />}
           {geoLoading ? 'Detecting…' : 'Auto-detect my location'}
         </button>
+        {form.latitude && form.longitude && (
+          <div className="mt-2 rounded-lg border border-gray-200 dark:border-white/15 overflow-hidden h-40">
+            <iframe
+              title="Report location preview"
+              className="w-full h-full"
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              src={`https://maps.google.com/maps?q=${encodeURIComponent(form.latitude)},${encodeURIComponent(form.longitude)}&z=14&output=embed`}
+            />
+          </div>
+        )}
       </div>
 
       <div>
-        <label className="label">Address (optional)</label>
+        <label className="label">Address / Area Name *</label>
         <input
-          className="input" placeholder="Street address or area name"
+          className="input" placeholder="Street address or area name" required
           value={form.address}
           onChange={e => setForm(f => ({ ...f, address: e.target.value }))}
         />

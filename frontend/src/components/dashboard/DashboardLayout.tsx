@@ -12,7 +12,6 @@ import {
   ChevronRight, Menu, X
 } from 'lucide-react';
 import clsx from 'clsx';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
 
 const adminLinks = [
   { href: '/dashboard',            icon: LayoutDashboard, label: 'Dashboard'   },
@@ -78,9 +77,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div>
             <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">NGO Resource</p>
             <p className="text-xs text-gray-400 dark:text-white/55">Allocation System</p>
-          </div>
-          <div className="ml-auto">
-            <ThemeToggle variant="ghost" />
           </div>
         </div>
       </div>
@@ -174,17 +170,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <span className="text-sm font-bold">NGO Resource</span>
           </div>
           <div className="ml-auto">
-            <div className="flex items-center gap-1">
-              <Link href="/dashboard/notifications" className="relative p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10">
-                <Bell className="w-4 h-4" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 inline-flex min-w-4 h-4 items-center justify-center rounded-full bg-red-600 text-white text-[10px] px-1">
-                    {unreadCount > 9 ? '9+' : unreadCount}
-                  </span>
-                )}
-              </Link>
-              <ThemeToggle variant="ghost" />
-            </div>
+            <Link href="/dashboard/notifications" className="relative p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10">
+              <Bell className="w-4 h-4" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 inline-flex min-w-4 h-4 items-center justify-center rounded-full bg-red-600 text-white text-[10px] px-1">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </Link>
           </div>
         </header>
 

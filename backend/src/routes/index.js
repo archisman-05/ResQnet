@@ -54,6 +54,7 @@ router.post('/reports',
     body('urgency').isIn(['low', 'medium', 'high', 'critical']),
     body('latitude').isFloat({ min: -90, max: 90 }),
     body('longitude').isFloat({ min: -180, max: 180 }),
+    body('address').trim().isLength({ min: 3 }),
   ],
   validate,
   reportController.createReport
@@ -95,6 +96,8 @@ router.get('/tasks/:id', authenticate, [param('id').isUUID()], validate, taskCon
 router.get('/tasks/:id/matches', authenticate, requireRole('admin'), [param('id').isUUID()], validate, taskController.getTaskMatches);
 router.post('/tasks/:id/join-request', authenticate, requireRole('volunteer'), [param('id').isUUID()], validate, taskController.requestJoinTask);
 router.put('/tasks/:id/leader', authenticate, requireRole('admin'), [param('id').isUUID(), body('volunteer_id').isUUID()], validate, taskController.setTaskLeader);
+router.post('/tasks/start-session', authenticate, requireRole('volunteer'), taskController.startLeaderSession);
+router.post('/tasks/end-session', authenticate, requireRole('volunteer'), taskController.endLeaderSession);
 
 router.put('/tasks/:id/status',
   authenticate,

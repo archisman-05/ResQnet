@@ -97,7 +97,7 @@ export const reportsApi = {
   create: (data: any) => api.post('/reports', data),
   list: (params?: any) => api.get('/reports', { params }),
   convert: (id: string, data: any) => api.post(`/reports/${id}/convert`, data),
-  centralInsights: () => api.get('/reports/central/insights'),
+  centralInsights: (params?: { city?: string }) => api.get('/reports/central/insights', { params }),
 };
 
 // ─── TASKS ────────────────────────────────────────
@@ -116,6 +116,8 @@ export const tasksApi = {
     api.get('/tasks/insights', { params }),
   requestJoin: (id: string, message?: string) => api.post(`/tasks/${id}/join-request`, { message }),
   setLeader: (id: string, volunteer_id: string) => api.put(`/tasks/${id}/leader`, { volunteer_id }),
+  startSession: (data: any) => api.post('/tasks/start-session', data),
+  endSession: (data: any) => api.post('/tasks/end-session', data),
 };
 
 // ─── ASSIGNMENTS ─────────────────────────────────

@@ -400,6 +400,71 @@ const requestJoinTask = async (req, res) => {
   }
 };
 
+const startLeaderSession = async (req, res) => {
+  const { task_id, selfie_image, selfie_geo, expected_volunteers, scanned_tokens = [] } = req.body || {};
+  if (!task_id || !selfie_image || !selfie_geo) {
+    return res.status(400).json({ success: false, message: 'task_id, selfie_image and selfie_geo are required' });
+  }
+  try {
+    const taskRes = await query(`SELECT id, metadata FROM tasks WHERE id = $1`, [task_id]);
+    if (!taskRes.rows.length) return res.status(404).json({ success: false, message: 'Task not found' });
+    const task = taskRes.rows[0];
+    const metadata = task.metadata || {};
+    const leaderId = metadata?.leader_id || null;
+    if (!leaderId || String(leaderId) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Only selected leader can start this task' });
+    }
+    const session = {
+      started_at: new Date().toISOString(),
+      leader_id: req.user.id,
+      expected_volunteers: Number(expected_volunteers || scanned_tokens.length || 1),
+      scanned_tokens_start: Array.from(new Set((scanned_tokens || []).map((s) => String(s)))),
+      selfie_geo,
+      selfie_image,
+      status: 'started',
+    };
+    const nextMetadata = { ...metadata, live_session: session };
+    await query(`UPDATE tasks SET metadata = $2, status = 'in_progress', updated_at = NOW() WHERE id = $1`, [task_id, nextMetadata]);
+    return res.json({ success: true, data: { session } });
+  } catch (err) {
+    logger.error('Start leader session error', { error: err.message });
+    return res.status(500).json({ success: false, message: 'Failed to start task session' });
+  }
+};
+
+const endLeaderSession = async (req, res) => {
+  const { task_id, group_image, group_geo, scanned_tokens = [] } = req.body || {};
+  if (!task_id || !group_image || !group_geo) {
+    return res.status(400).json({ success: false, message: 'task_id, group_image and group_geo are required' });
+  }
+  try {
+    const taskRes = await query(`SELECT id, metadata FROM tasks WHERE id = $1`, [task_id]);
+    if (!taskRes.rows.length) return res.status(404).json({ success: false, message: 'Task not found' });
+    const task = taskRes.rows[0];
+    const metadata = task.metadata || {};
+    const leaderId = metadata?.leader_id || null;
+    if (!leaderId || String(leaderId) !== String(req.user.id)) {
+      return res.status(403).json({ success: false, message: 'Only selected leader can end this task' });
+    }
+
+    const liveSession = metadata.live_session || {};
+    const finalSession = {
+      ...liveSession,
+      ended_at: new Date().toISOString(),
+      scanned_tokens_end: Array.from(new Set((scanned_tokens || []).map((s) => String(s)))),
+      group_geo,
+      group_image,
+      status: 'completed',
+    };
+    const nextMetadata = { ...metadata, live_session: finalSession };
+    await query(`UPDATE tasks SET metadata = $2, status = 'completed', completed_at = NOW(), updated_at = NOW() WHERE id = $1`, [task_id, nextMetadata]);
+    return res.json({ success: true, data: { session: finalSession } });
+  } catch (err) {
+    logger.error('End leader session error', { error: err.message });
+    return res.status(500).json({ success: false, message: 'Failed to end task session' });
+  }
+};
+
 const setTaskLeader = async (req, res) => {
   const { volunteer_id } = req.body || {};
   if (!volunteer_id) {
@@ -451,4 +516,6 @@ module.exports = {
   getAreaInsights,
   requestJoinTask,
   setTaskLeader,
+  startLeaderSession,
+  endLeaderSession,
 };

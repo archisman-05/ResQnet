@@ -6,7 +6,6 @@ import { GoogleMap, InfoWindow, Marker, useLoadScript } from '@react-google-maps
 import { ngosApi, tasksApi, volunteersApi } from '@/lib/api';
 import { useSocket } from '@/hooks/useSocket';
 import { useSosStore } from '@/features/sos/store/sosStore';
-import { useThemeStore } from '@/store/themeStore';
 import { useAuthStore } from '@/store/authStore';
 import toast from 'react-hot-toast';
 
@@ -52,7 +51,6 @@ export default function ResourceMap({
   const { on } = useSocket();
   const user = useAuthStore((s) => s.user);
   const sosAlert = useSosStore((s) => s.activeAlert);
-  const resolvedTheme = useThemeStore((s) => s.resolved);
 
   // React 19 + @react-google-maps/api typing mismatch workaround (runtime is fine)
   const GoogleMapAny = GoogleMap as any;
@@ -77,25 +75,6 @@ export default function ResourceMap({
   });
 
   const mapCenter = useMemo<LatLng>(() => ({ lat: 20.5937, lng: 78.9629 }), []);
-  const isDark = resolvedTheme === 'dark';
-
-  const darkMapStyles = useMemo(
-    () => [
-      { elementType: 'geometry', stylers: [{ color: '#0b0d14' }] },
-      { elementType: 'labels.text.stroke', stylers: [{ color: '#0b0d14' }] },
-      { elementType: 'labels.text.fill', stylers: [{ color: '#8b95a7' }] },
-      { featureType: 'administrative', elementType: 'geometry', stylers: [{ color: '#2a3146' }] },
-      { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#8b95a7' }] },
-      { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#0f1220' }] },
-      { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#12162a' }] },
-      { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1c2442' }] },
-      { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca3af' }] },
-      { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#060812' }] },
-      { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#6b7280' }] },
-    ],
-    []
-  );
-
   // ─── Load data ─────────────────────────
   const loadMapData = useCallback(async () => {
     try {
@@ -197,7 +176,6 @@ export default function ResourceMap({
           mapTypeControl: false,
           fullscreenControl: false,
           clickableIcons: false,
-          styles: isDark ? (darkMapStyles as any) : undefined,
         }}
         onClick={() => setSelected(null)}
         onLoad={(loadedMap: google.maps.Map) => setMap(loadedMap)}

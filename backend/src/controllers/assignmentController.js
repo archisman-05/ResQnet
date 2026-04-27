@@ -123,6 +123,7 @@ const getAssignments = async (req, res) => {
           t.address AS task_address,
           t.lat AS task_lat,
           t.lng AS task_lng,
+          (t.metadata->>'leader_id') AS task_leader_id,
           u.full_name AS volunteer_name
        FROM assignments a
        JOIN tasks t ON t.id = a.task_id

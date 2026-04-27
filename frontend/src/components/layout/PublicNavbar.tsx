@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { Activity, ArrowRight } from 'lucide-react';
-import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { Button } from '@/components/ui/Button';
 import { useAuthStore } from '@/store/authStore';
 
@@ -37,7 +36,6 @@ export function PublicNavbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <ThemeToggle variant="ghost" />
           {isAuthenticated ? (
             <Link href="/dashboard">
               <Button variant="secondary" size="sm" rightIcon={<ArrowRight className="h-4 w-4" />}>

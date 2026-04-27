@@ -20,7 +20,7 @@ const generateTokens = (userId, role) => {
 
 // POST /api/auth/signup
 const signup = async (req, res) => {
-  const { email, password, full_name, role = 'volunteer', phone } = req.body;
+  const { email, password, full_name, role = 'volunteer', phone, skills = [] } = req.body;
 
   try {
     // Check existing user
@@ -43,8 +43,8 @@ const signup = async (req, res) => {
       // Create volunteer profile if role is volunteer
       if (role === 'volunteer') {
         await client.query(
-          `INSERT INTO volunteer_profiles (user_id) VALUES ($1)`,
-          [user.id]
+          `INSERT INTO volunteer_profiles (user_id, skills) VALUES ($1, $2)`,
+          [user.id, Array.isArray(skills) ? skills : []]
         );
       }
 

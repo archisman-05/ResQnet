@@ -3,14 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
-import { Activity, Loader2, Eye, EyeOff, Zap } from 'lucide-react';
+import { Activity, Loader2, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
-
-const DEMO_ACCOUNTS = [
-  { label: 'Admin',     email: 'admin@ngo.org',     password: 'admin123', role: 'Full dashboard access' },
-  { label: 'Volunteer', email: 'volunteer@ngo.org',  password: 'vol123',  role: 'Task assignments view' },
-];
 
 export default function LoginPage() {
   const router          = useRouter();
@@ -36,10 +31,6 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (email: string, password: string) => {
-    setForm({ email, password });
-  };
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-blue-50 dark:from-ink-950 dark:via-ink-950 dark:to-slate-900 flex items-center justify-center p-4 text-gray-900 dark:text-white">
       <div className="w-full max-w-sm">
@@ -50,34 +41,6 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">NGO Resource</h1>
           <p className="text-sm text-gray-500">Smart Allocation System</p>
-        </div>
-
-        {/* Demo accounts banner */}
-        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 mb-4 shadow-sm dark:border-amber-300/25 dark:bg-amber-500/10">
-          <div className="flex items-center gap-2 mb-3">
-            <Zap className="w-4 h-4 text-amber-600" />
-            <p className="text-sm font-semibold text-amber-800">Demo Mode — No backend needed</p>
-          </div>
-          <div className="space-y-2">
-            {DEMO_ACCOUNTS.map(acc => (
-              <button
-                key={acc.email}
-                type="button"
-                onClick={() => fillDemo(acc.email, acc.password)}
-                className="w-full flex items-center justify-between px-3 py-2 bg-white border border-amber-200 rounded-lg hover:bg-amber-50 transition-colors text-left group dark:bg-white/10 dark:border-amber-300/20 dark:hover:bg-white/15"
-              >
-                <div>
-                  <p className="text-xs font-semibold text-gray-800 group-hover:text-brand-700">
-                    {acc.label} — {acc.email}
-                  </p>
-                  <p className="text-xs text-gray-400">{acc.role} · password: {acc.password}</p>
-                </div>
-                <span className="text-xs text-brand-600 font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                  Fill →
-                </span>
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* Login form */}

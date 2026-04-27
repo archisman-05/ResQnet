@@ -154,7 +154,14 @@ const getWeeklySummary = async (req, res) => {
       top_areas: topAreas.rows.map(r => r.city),
     };
 
-    let summary = 'AI summary unavailable';
+    let summary = {
+      title: 'Weekly NGO Operations Report',
+      executive_summary: 'Weekly summary is being generated.',
+      highlights: [],
+      concerns: [],
+      next_week_focus: [],
+      impact_statement: '',
+    };
 
     try {
       summary = await geminiService.generateWeeklySummary(statsData);
