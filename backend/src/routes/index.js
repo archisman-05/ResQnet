@@ -153,9 +153,9 @@ router.get('/ngos/map', ngoController.getNgosForMap);
 router.get('/match/nearby', authenticate, matchController.getNearby);
 
 // ─── DASHBOARD ─────────────────────────────────────────────────────────────────
-router.get('/api/dashboard/stats', authenticate, requireRole('admin'), dashboardController.getStats);
-router.get('/api/dashboard/weekly-summary', authenticate, requireRole('admin'), dashboardController.getWeeklySummary);
-router.get('/api/dashboard/volunteer-stats', authenticate, requireRole('volunteer'), dashboardController.getVolunteerStats);
+router.get('/dashboard/stats', authenticate, requireRole('admin'), dashboardController.getStats);
+router.get('/dashboard/weekly-summary', authenticate, requireRole('admin'), dashboardController.getWeeklySummary);
+router.get('/dashboard/volunteer-stats', authenticate, requireRole('volunteer'), dashboardController.getVolunteerStats);
 
 // ─── SOS ────────────────────────────────────────────────────────────────────────
 router.post(
