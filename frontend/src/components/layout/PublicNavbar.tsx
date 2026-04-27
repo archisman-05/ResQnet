@@ -17,9 +17,9 @@ export function PublicNavbar() {
           </span>
           <div className="leading-tight">
             <div className="text-sm font-extrabold tracking-tight text-gray-900 dark:text-white">
-              NGO Resource
+              ResQnet
             </div>
-            <div className="text-[11px] text-gray-500 dark:text-white/55">Allocation Platform</div>
+            <div className="text-[11px] text-gray-500 dark:text-white/55">Smart Resource Allocation Platform</div>
           </div>
         </Link>
 

@@ -8,7 +8,7 @@ import { PageTransition } from '@/components/layout/PageTransition';
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
-  title: 'NGO Resource Allocation System',
+  title: 'ResQnet',
   description: 'Smart AI-powered community needs and volunteer matching platform',
   icons: { icon: '/favicon.ico' },
 };

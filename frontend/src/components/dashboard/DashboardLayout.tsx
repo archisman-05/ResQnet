@@ -75,8 +75,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <Activity className="w-4 h-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">NGO Resource</p>
-            <p className="text-xs text-gray-400 dark:text-white/55">Allocation System</p>
+            <p className="text-sm font-bold text-gray-900 dark:text-white leading-tight">ResQnet</p>
+            <p className="text-xs text-gray-400 dark:text-white/55"> Smart Resource Allocation System</p>
           </div>
         </div>
       </div>
@@ -167,7 +167,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="w-6 h-6 bg-brand-600 rounded flex items-center justify-center">
               <Activity className="w-3 h-3 text-white" />
             </div>
-            <span className="text-sm font-bold">NGO Resource</span>
+            <span className="text-sm font-bold">ResQnet</span>
           </div>
           <div className="ml-auto">
             <Link href="/dashboard/notifications" className="relative p-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/10">

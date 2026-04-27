@@ -39,8 +39,8 @@ export default function LoginPage() {
           <div className="w-14 h-14 bg-brand-600 rounded-2xl flex items-center justify-center shadow-lg mb-3">
             <Activity className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">NGO Resource</h1>
-          <p className="text-sm text-gray-500">Smart Allocation System</p>
+          <h1 className="text-2xl font-bold text-gray-900">ResQnet</h1>
+          <p className="text-sm text-gray-500">Smart Resource Allocation System</p>
         </div>
 
         {/* Login form */}

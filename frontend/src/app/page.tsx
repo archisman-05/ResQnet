@@ -162,7 +162,7 @@ export default function HomePage() {
       {/* Footer */}
       <footer className="border-t border-gray-200/70 dark:border-white/10 bg-white/50 dark:bg-ink-950/40">
         <div className="mx-auto max-w-6xl px-4 py-10 flex flex-col md:flex-row gap-6 md:items-center">
-          <div className="text-sm font-extrabold text-gray-900 dark:text-white">NGO Resource Allocation System</div>
+          <div className="text-sm font-extrabold text-gray-900 dark:text-white">ResQnet</div>
           <div className="md:ml-auto text-xs text-gray-500 dark:text-white/55">
             © {new Date().getFullYear()} Built for real-world NGO operations.
           </div>
