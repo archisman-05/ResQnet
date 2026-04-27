@@ -39,8 +39,8 @@ const authLimiter = rateLimit({
 });
 
 app.use('/api/', limiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/signup', authLimiter);
+app.use('auth/login', authLimiter);
+app.use('auth/signup', authLimiter);
 
 // ─── General Middleware ────────────────────────────────────────────────────────
 app.use(compression());
