@@ -29,7 +29,7 @@ router.post('/auth/signup',
   authController.signup
 );
 
-router.post('/auth/login',
+router.post('/api/auth/login',
   [body('email').isEmail(), body('password').notEmpty()],
   validate,
   authController.login

@@ -85,9 +85,9 @@ export default api;
 
 // ─── AUTH ─────────────────────────────────────────
 export const authApi = {
-  signup: (data: any) => api.post('/auth/signup', data),
-  login: (data: any) => api.post('/auth/login', data),
-  refresh: (refreshToken: string) => api.post('/auth/refresh', { refreshToken }),
+  signup: (data: any) => api.post('/api/auth/signup', data),
+  login: (data: any) => api.post('/api/auth/login', data),
+  refresh: (refreshToken: string) => api.post('/api/auth/refresh', { refreshToken }),
   logout: () => Promise.resolve({ data: { success: true } }),
   me: () => api.get('/auth/me'),
 };
