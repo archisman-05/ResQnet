@@ -91,7 +91,7 @@ app.use((err, req, res, next) => {
 initializeSocket(httpServer);
 
 // ─── Start Server ──────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 httpServer.listen(PORT, () => {
   logger.info(`🚀 Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
   logger.info(`📡 WebSocket server ready`);

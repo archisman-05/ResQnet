@@ -30,7 +30,7 @@ RUN mkdir -p logs && chown nodeapp:nodejs logs
 
 USER nodeapp
 
-EXPOSE 5000
+EXPOSE 8080
 
 # Use tini for proper signal handling
 ENTRYPOINT ["/sbin/tini", "--"]
