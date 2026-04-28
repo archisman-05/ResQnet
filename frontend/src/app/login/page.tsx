@@ -52,7 +52,7 @@ export default function LoginPage() {
               Admin: <span className="font-mono">admin@gmail.com</span> / <span className="font-mono">admin123</span>
             </p>
             <p className="text-xs text-gray-700 dark:text-white/80">
-              Volunteer: <span className="font-mono">volunteer@gmail.com</span> / <span className="font-mono">vol123</span>
+              Volunteer: <span className="font-mono">volunteer@gmail.com</span> / <span className="font-mono">vol12345</span>
             </p>
           </div>
 
