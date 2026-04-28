@@ -7,7 +7,6 @@ import { useRealtimeNotifications } from '@/hooks/useSocket';
 import { useAuthStore } from '@/store/authStore';
 import { GlobalOverlays } from '@/components/layout/GlobalOverlays';
 
-// Runs once on client mount — reads localStorage and hydrates the auth store.
 // This pattern avoids server/client mismatch that causes React hydration errors.
 function AuthBootstrap() {
   const fetchMe = useAuthStore((s) => s.fetchMe);
@@ -19,6 +18,30 @@ function AuthBootstrap() {
 
 function RealtimeLayer() {
   useRealtimeNotifications();
+  return null;
+}
+
+function BackendWarmup() {
+  useEffect(() => {
+    const runWarmup = async () => {
+      if (typeof window === 'undefined') return;
+      if (sessionStorage.getItem('backend_warmup_done') === '1') return;
+
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+      const backendBase = apiUrl.replace(/\/api\/?$/, '');
+
+      try {
+        await fetch(`${backendBase}/health`, { method: 'GET' });
+      } catch {
+        // Ignore warmup errors; login flow handles actual auth failures separately.
+      } finally {
+        sessionStorage.setItem('backend_warmup_done', '1');
+      }
+    };
+
+    runWarmup();
+  }, []);
+
   return null;
 }
 
@@ -38,6 +61,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <BackendWarmup />
       <AuthBootstrap />
       <RealtimeLayer />
       {children}
