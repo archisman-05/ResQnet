@@ -30,17 +30,11 @@ const limiter = rateLimit({
   message: { success: false, message: 'Too many requests. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-});
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: parseInt(process.env.AUTH_RATE_LIMIT_MAX || '100'),
-  message: { success: false, message: 'Too many login attempts. Try again in 15 minutes.' },
+  // Never throttle login so legitimate users can always sign in.
+  skip: (req) => req.path === '/api/auth/login',
 });
 
 app.use('/api/', limiter);
-app.use('auth/login', authLimiter);
-app.use('auth/signup', authLimiter);
 
 // ─── General Middleware ────────────────────────────────────────────────────────
 app.use(compression());
