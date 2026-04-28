@@ -342,12 +342,6 @@ docker push <ecr-uri>/ngo-backend:latest
 
 ---
 
-## 📄 Demo Credentials
-
-After running `database/schema.sql`:
-
-| Role  | Email           | Password |
-|-------|-----------------|----------|
-| Admin | admin@ngo.org   | admin123 |
+## 📄 Credentials
 
 Create volunteer accounts via the `/signup` page.
