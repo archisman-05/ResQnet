@@ -13,6 +13,7 @@ const { initializeSocket } = require('./websocket/socketManager');
 
 const app = express();
 const httpServer = http.createServer(app);
+app.set('trust proxy', 1);
 
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet({ crossOriginEmbedderPolicy: false }));
@@ -31,7 +32,7 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   // Never throttle login so legitimate users can always sign in.
-  skip: (req) => req.path === '/api/auth/login',
+  skip: (req) => req.path === '/auth/login' || req.originalUrl === '/api/auth/login',
 });
 
 app.use('/api/', limiter);
