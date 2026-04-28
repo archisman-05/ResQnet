@@ -65,14 +65,43 @@ export default function StartTaskPage() {
   }, [resolvedRoleMode, leaderTasks, memberTasks, selectedTaskId]);
 
   const captureGeoTag = async (setter: (value: string) => void) => {
-    if (!navigator.geolocation) return toast.error('Geolocation unavailable');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
+    if (!navigator.geolocation) {
+      setter('unavailable');
+      toast.error('Geolocation unavailable. Continuing without coordinates.');
+      return;
+    }
+
+    const getPosition = () =>
+      new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 60000,
+        });
+      });
+
+    try {
+      const pos = await getPosition();
+      setter(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`);
+      toast.success('Geotag captured.');
+    } catch {
+      // CoreLocation can intermittently return "location unknown"; one retry avoids false failures.
+      try {
+        const pos = await getPosition();
         setter(`${pos.coords.latitude.toFixed(6)},${pos.coords.longitude.toFixed(6)}`);
         toast.success('Geotag captured.');
-      },
-      () => toast.error('Location permission denied.')
-    );
+      } catch (err: any) {
+        setter('unavailable');
+        const code = typeof err?.code === 'number' ? err.code : -1;
+        if (code === 1) {
+          toast.error('Location permission denied. Continuing without coordinates.');
+        } else if (code === 3) {
+          toast.error('Location timed out. Continuing without coordinates.');
+        } else {
+          toast.error('Location unavailable right now. Continuing without coordinates.');
+        }
+      }
+    }
   };
 
   useEffect(() => {
