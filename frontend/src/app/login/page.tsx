@@ -46,6 +46,15 @@ export default function LoginPage() {
         {/* Login form */}
         <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-md dark:border-white/10 dark:bg-white/5">
           <h2 className="text-lg font-bold text-gray-900 dark:text-white mb-5">Sign in</h2>
+          <div className="mb-4 rounded-xl border border-brand-200/70 bg-brand-50/70 dark:border-brand-400/25 dark:bg-brand-500/10 p-3 space-y-1">
+            <p className="text-xs font-semibold text-brand-700 dark:text-brand-200">Demo Credentials</p>
+            <p className="text-xs text-gray-700 dark:text-white/80">
+              Admin: <span className="font-mono">admin@gmail.com</span> / <span className="font-mono">admin123</span>
+            </p>
+            <p className="text-xs text-gray-700 dark:text-white/80">
+              Volunteer: <span className="font-mono">volunteer@gmail.com</span> / <span className="font-mono">vol123</span>
+            </p>
+          </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
