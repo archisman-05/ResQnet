@@ -1,4 +1,4 @@
-# 🌍 Smart Resource Allocation System for NGOs
+# 🌍 ResQnet: Smart Resource Allocation System for NGOs
 
 An AI-powered platform that intelligently collects community needs and matches volunteers using real-time data and Google Gemini AI.
 
